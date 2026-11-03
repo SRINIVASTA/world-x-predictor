@@ -10,11 +10,8 @@ def yahoo_autocomplete_search(query: str) -> list:
     if not query:
         return []
         
+    url = f"https://yahoo.com{requests.utils.quote(query)}&quotesCount=10&newsCount=0"
     try:
-        encoded_query = requests.utils.quote(query)
-        # ✅ FIXED: Corrected full endpoint path with the matching function variable name
-        url = f"https://yahoo.com{encoded_query}&quotesCount=10&newsCount=0"
-        
         response = requests.get(url, timeout=5)
         if response.status_code == 200:
             results = response.json().get('quotes', [])
@@ -30,6 +27,4 @@ def extract_ticker(value: str) -> str:
     """
     Extracts the raw ticker symbol from the autocomplete string format.
     """
-    if " - " in value:
-        return value.split(" - ")[0].strip()
-    return value.strip()
+    return value.split(" - ")[0].strip() if " - " in value else value.strip()
