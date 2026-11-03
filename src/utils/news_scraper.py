@@ -1,7 +1,7 @@
 import feedparser
 import urllib.parse
-from config.base_settings import COMMODITIES_MAP  # ✅ Dropped src.
-from config.logger_config import setup_logger      # ✅ Dropped src.
+from config.base_settings import COMMODITIES_MAP
+from config.logger_config import setup_logger
 
 logger = setup_logger("news_scraper")
 
@@ -9,15 +9,35 @@ def get_news_headlines(company_name: str, max_items: int = 5) -> list:
     logger.info(f"Initiating remote RSS ingest tracking query for: {company_name}")
     name_upper = company_name.upper()
     
+    # 1. Resolve commodity aliases or keep clean asset terms
     if name_upper in COMMODITIES_MAP:
-        query = COMMODITIES_MAP[name_upper].replace(' ', '+')
+        query_term = COMMODITIES_MAP[name_upper]
+    elif "-" in company_name: # Handle crypto asset splits gracefully (e.g. BTC-USD -> BTC)
+        query_term = company_name.split("-")[0]
+    elif "=" in company_name: # Handle Forex asset structures safely (e.g. EURUSD=X -> EURUSD)
+        query_term = company_name.split("=")[0]
     else:
-        query = urllib.parse.quote(company_name)
+        query_term = company_name
+
+    # 2. Format a highly resilient global news query array
+    # Appending specific business context helps focus results without breaking the raw RSS matching logic
+    refined_query = f"{query_term} finance market"
+    encoded_query = urllib.parse.quote(refined_query)
     
-    rss_url = f"https://google.com{query}+stock"
+    rss_url = f"https://google.com{encoded_query}&hl=en-US&gl=US&ceid=US:en"
+    
     try:
         feed = feedparser.parse(rss_url)
-        return [entry['title'] for entry in feed.entries[:max_items]]
+        headlines = [entry['title'] for entry in feed.entries[:max_items]]
+        
+        # Fallback tracking if feed results returned shallow
+        if not headlines:
+            logger.warning(f"Secondary try fallback executed for: {query_term}")
+            fallback_url = f"https://google.com{urllib.parse.quote(query_term)}"
+            feed = feedparser.parse(fallback_url)
+            headlines = [entry['title'] for entry in feed.entries[:max_items]]
+            
+        return headlines
     except Exception as e:
         logger.error(f"Failed to fetch or parse RSS feed from endpoint: {str(e)}")
         return []
