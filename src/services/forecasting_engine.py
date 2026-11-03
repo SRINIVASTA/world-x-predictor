@@ -11,14 +11,14 @@ def make_forecast(ticker: str, timeframe: str):
     try:
         stock = yf.Ticker(ticker)
         
-        # Safely extract currency code from fast_info or info payload fallback
+        # Securely parse raw local currency identifiers
         raw_currency = "USD"
         if hasattr(stock, 'fast_info') and 'currency' in stock.fast_info:
             raw_currency = stock.fast_info['currency']
         else:
             raw_currency = stock.info.get("currency", "USD")
             
-        # Transform code into its specific local symbol (e.g., INR -> ₹)
+        # Map ISO code to its localized symbol representation
         currency_symbol = get_currency_symbol(raw_currency)
 
         df = stock.history(period="1y")[["Close"]].reset_index()
@@ -31,7 +31,7 @@ def make_forecast(ticker: str, timeframe: str):
         model = Prophet(daily_seasonality=True)
         model.fit(df)
 
-        periods = TIMEFRAME_PERIODS.get(timeframe, 1)
+        periods = TIMEFRAME_PERIODS.get(timeframe, 90)
         future = model.make_future_dataframe(periods=periods)
         forecast = model.predict(future)
 
