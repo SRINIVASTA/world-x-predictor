@@ -15,8 +15,9 @@ def summarize_news_with_groq(headlines: list) -> str:
         
         prompt = "Summarize the following recent news headlines for investors:\n\n" + "\n".join([f"- {h}" for h in headlines])
         
+        # ✅ FIXED: Updated to an active, production-grade model identifier tier
         completion = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.3-70b-specdec",
             messages=[
                 {
                     "role": "system", 
