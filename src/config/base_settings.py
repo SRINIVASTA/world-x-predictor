@@ -10,7 +10,7 @@ COMMODITIES_MAP = {
     "RB=F": "RBOB Gasoline"
 }
 
-# 🗓️ Horizon Prediction Intervals 
+# 🗓️ Extended Horizon Prediction Intervals 
 TIMEFRAME_PERIODS = {
     '1 day': 1,
     '1 week': 7,
@@ -21,7 +21,7 @@ TIMEFRAME_PERIODS = {
     '2 year': 730 
 }
 
-# 🌍 Unified Multi-Market Global Currency Systems Mapping
+# 🌍 Global Currencies Visual Symbols Layout
 CURRENCY_SYMBOLS = {
     "USD": "$",
     "INR": "₹",
@@ -42,8 +42,7 @@ CURRENCY_SYMBOLS = {
 
 def get_currency_symbol(currency_code: str) -> str:
     """
-    Resolves standard ISO currency text blocks to regional symbolic representations.
-    Falls back gracefully to the raw code if a distinct symbol isn't registered.
+    Transforms traditional ISO text blocks into regional currency symbols.
     """
     if not currency_code:
         return "$"
