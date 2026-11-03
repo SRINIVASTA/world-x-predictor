@@ -1,8 +1,7 @@
 import feedparser
 import urllib.parse
-from config.base_settings import COMMODITIES_MAP
-from config.logger_config import setup_logger
-
+from ..config.base_settings import COMMODITIES_MAP
+from ..config.logger_config import setup_logger
 logger = setup_logger("news_scraper")
 
 def get_news_headlines(company_name: str, max_items: int = 5) -> list:
