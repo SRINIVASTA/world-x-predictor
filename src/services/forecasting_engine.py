@@ -1,8 +1,8 @@
 import pandas as pd
 from prophet import Prophet
 import yfinance as yf
-from config.base_settings import TIMEFRAME_PERIODS  # ✅ Dropped src.
-from config.logger_config import setup_logger        # ✅ Dropped src.
+from config.base_settings import TIMEFRAME_PERIODS, get_currency_symbol
+from config.logger_config import setup_logger
 
 logger = setup_logger("forecasting_engine")
 
@@ -10,8 +10,16 @@ def make_forecast(ticker: str, timeframe: str):
     logger.info(f"Generating forecast for {ticker} over {timeframe}")
     try:
         stock = yf.Ticker(ticker)
-        info = stock.info
-        currency = info.get("currency", "USD")
+        
+        # Safely extract currency code from fast_info or info payload fallback
+        raw_currency = "USD"
+        if hasattr(stock, 'fast_info') and 'currency' in stock.fast_info:
+            raw_currency = stock.fast_info['currency']
+        else:
+            raw_currency = stock.info.get("currency", "USD")
+            
+        # Transform code into its specific local symbol (e.g., INR -> ₹)
+        currency_symbol = get_currency_symbol(raw_currency)
 
         df = stock.history(period="1y")[["Close"]].reset_index()
         if df.empty:
@@ -31,7 +39,7 @@ def make_forecast(ticker: str, timeframe: str):
         lower = forecast.iloc[-1]['yhat_lower']
         upper = forecast.iloc[-1]['yhat_upper']
 
-        return forecast, df, currency, predicted, lower, upper
+        return forecast, df, currency_symbol, predicted, lower, upper
     except Exception as e:
         logger.error(f"Failed to generate forecast for {ticker}: {str(e)}")
         raise
