@@ -13,10 +13,8 @@ def get_news_headlines(company_name: str, max_items: int = 5) -> list:
     if name_upper in COMMODITIES_MAP:
         query_term = COMMODITIES_MAP[name_upper]
     elif "-" in company_name: 
-        # Handle Crypto (e.g., BTC-USD -> BTC)
         query_term = company_name.split("-")[0]
     elif "=" in company_name: 
-        # Handle Forex (e.g., EURUSD=X -> EURUSD)
         query_term = company_name.split("=")[0]
     else:
         query_term = company_name
@@ -25,8 +23,8 @@ def get_news_headlines(company_name: str, max_items: int = 5) -> list:
     refined_query = f"{query_term} stock market business"
     encoded_query = urllib.parse.quote(refined_query)
     
-    # ✅ FIXED: Pointed directly to the valid Google News XML engine search path
-    rss_url = f"https://google.com{encoded_query}&hl=en-US&gl=US&ceid=US:en"
+    # ✅ FIXED: Added correct ://google.com domain and explicit search path structure
+    rss_url = f"https://://google.com/rss/search?q={encoded_query}&hl=en-US&gl=US&ceid=US:en"
     
     try:
         feed = feedparser.parse(rss_url)
@@ -35,8 +33,7 @@ def get_news_headlines(company_name: str, max_items: int = 5) -> list:
         # 3. Secondary fallback if the compound query yields nothing
         if not headlines:
             logger.warning(f"Secondary try fallback executed for raw term: {query_term}")
-            # ✅ FIXED: Corrected the fallback URL path endpoint as well
-            fallback_url = f"https://google.com{urllib.parse.quote(query_term)}&hl=en-US&gl=US&ceid=US:en"
+            fallback_url = f"https://://google.com/rss/search?q={urllib.parse.quote(query_term)}&hl=en-US&gl=US&ceid=US:en"
             feed = feedparser.parse(fallback_url)
             headlines = [entry['title'] for entry in feed.entries[:max_items]]
             
