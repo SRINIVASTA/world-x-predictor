@@ -1,8 +1,8 @@
 import pandas as pd
 from prophet import Prophet
 import yfinance as yf
-from ..config.base_settings import TIMEFRAME_PERIODS
-from ..config.logger_config import setup_logger
+from config.base_settings import TIMEFRAME_PERIODS  # ✅ Dropped src.
+from config.logger_config import setup_logger        # ✅ Dropped src.
 
 logger = setup_logger("forecasting_engine")
 
