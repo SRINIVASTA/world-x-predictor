@@ -9,15 +9,15 @@ def summarize_news_with_groq(headlines: list) -> str:
         return "No headlines provided to summarize."
 
     try:
-        # Access secret variable token from Streamlit securely
+        # Pull your secure token key straight from the dashboard settings
         api_key = st.secrets["GROQ_API_KEY"]
         client = Groq(api_key=api_key)
         
         prompt = "Summarize the following recent news headlines for investors:\n\n" + "\n".join([f"- {h}" for h in headlines])
         
-        # ✅ FIXED: Updated to an active, production-grade model identifier tier
+        # ✅ FIXED: Migrated to Groq's active production successor model tier
         completion = client.chat.completions.create(
-            model="llama-3.3-70b-specdec",
+            model="qwen/qwen3.8-27b",
             messages=[
                 {
                     "role": "system", 
