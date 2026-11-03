@@ -21,7 +21,7 @@ def make_forecast(ticker: str, timeframe: str):
         # Map ISO code to its localized symbol representation
         currency_symbol = get_currency_symbol(raw_currency)
 
-        df = stock.history(period="1y")[["Close"]].reset_index()
+        df = stock.history(period="5y")[["Close"]].reset_index()
         if df.empty:
             raise ValueError(f"No historical data found for ticker: {ticker}")
             
