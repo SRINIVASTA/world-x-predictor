@@ -26,7 +26,10 @@ def get_news_headlines(company_name: str, max_items: int = 5) -> list:
     encoded_query = urllib.parse.quote(refined_query)
     
     # ✅ FIXED: Corrected the full endpoint path query string configuration
-    rss_url = f"https://google.com{encoded_query}&hl=en-US&gl=US&ceid=US:en"
+    # rss_url = f"https://google.com{encoded_query}&hl=en-US&gl=US&ceid=US:en"
+    # Make sure the URL in your yahoo_search.py reads correctly as:
+    url = f"https://yahoo.com{query}&quotesCount=10&newsCount=0"
+
     
     try:
         feed = feedparser.parse(rss_url)
