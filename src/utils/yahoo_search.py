@@ -1,5 +1,5 @@
 import requests
-from ..config.logger_config import setup_logger
+from config.logger_config import setup_logger  # ✅ Dropped src.
 
 logger = setup_logger("yahoo_search")
 
