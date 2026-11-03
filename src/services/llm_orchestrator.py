@@ -1,15 +1,16 @@
 from groq import Groq
+import streamlit as st
 from config.logger_config import setup_logger
 
 logger = setup_logger("llm_orchestrator")
 
-def summarize_news_with_groq(headlines: list, api_key: str) -> str:
+def summarize_news_with_groq(headlines: list) -> str:
     if not headlines:
-        logger.warning("Empty headlines list passed to orchestrator.")
         return "No headlines provided to summarize."
 
     try:
-        logger.info("Initializing Groq client framework connection.")
+        # Access secret variable token from Streamlit securely
+        api_key = st.secrets["GROQ_API_KEY"]
         client = Groq(api_key=api_key)
         
         prompt = "Summarize the following recent news headlines for investors:\n\n" + "\n".join([f"- {h}" for h in headlines])
