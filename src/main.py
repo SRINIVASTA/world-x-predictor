@@ -77,6 +77,7 @@ if predict_button and valid_ticker:
 
         forecast, df, currency, predicted, lower, upper = make_forecast(selected_ticker, timeframe)
 
+        # Locate this part inside your 'if predict_button and valid_ticker:' structure:
         st.subheader(f"{selected_ticker} ({company})")
         st.write(f"Exchange: `{exchange}`")
 
@@ -85,10 +86,15 @@ if predict_button and valid_ticker:
         delta = current_price - previous_price
         pct = (delta / previous_price) * 100 if previous_price != 0 else 0
 
-        st.metric("Current Price", f"{currency} {current_price:.2f}", f"{delta:+.2f} ({pct:+.2f}%)")
+        # Dynamic clean currency symbol mapping output (e.g., ₹2,450.00 or $338.32)
+        st.metric(
+            label="Current Price", 
+            value=f"{currency} {current_price:,.2f}", 
+            delta=f"{delta:+.2f} ({pct:+.2f}%)"
+        )
 
-        st.success(f"📊 Predicted: {currency} {predicted:.2f}")
-        st.caption(f"Confidence: {currency} {lower:.2f} - {upper:.2f}")
+        st.success(f"📊 Predicted Target: {currency} {predicted:,.2f}")
+        st.caption(f"Confidence Bound Range: {currency} {lower:,.2f} — {currency} {upper:,.2f}")
 
         trend = get_recent_trend(df)
         if trend:
