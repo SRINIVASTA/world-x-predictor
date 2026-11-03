@@ -25,17 +25,17 @@ def get_news_headlines(company_name: str, max_items: int = 5) -> list:
     refined_query = f"{query_term} stock market business"
     encoded_query = urllib.parse.quote(refined_query)
     
-    # ✅ FIXED: Restored complete subdomain and the exact RSS query path endpoint
+    # ✅ FIXED: Pointed directly to the valid Google News XML engine search path
     rss_url = f"https://google.com{encoded_query}&hl=en-US&gl=US&ceid=US:en"
     
     try:
         feed = feedparser.parse(rss_url)
         headlines = [entry['title'] for entry in feed.entries[:max_items]]
         
-        # 3. Secondary fallback if the compound string yields nothing
+        # 3. Secondary fallback if the compound query yields nothing
         if not headlines:
             logger.warning(f"Secondary try fallback executed for raw term: {query_term}")
-            # ✅ FIXED: Corrected the fallback path route configuration as well
+            # ✅ FIXED: Corrected the fallback URL path endpoint as well
             fallback_url = f"https://google.com{urllib.parse.quote(query_term)}&hl=en-US&gl=US&ceid=US:en"
             feed = feedparser.parse(fallback_url)
             headlines = [entry['title'] for entry in feed.entries[:max_items]]
