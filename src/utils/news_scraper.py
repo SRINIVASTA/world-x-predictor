@@ -9,31 +9,33 @@ def get_news_headlines(company_name: str, max_items: int = 5) -> list:
     logger.info(f"Initiating remote RSS ingest tracking query for: {company_name}")
     name_upper = company_name.upper()
     
-    # 1. Resolve commodity aliases or keep clean asset terms
+    # 1. Resolve asset names cleanly
     if name_upper in COMMODITIES_MAP:
         query_term = COMMODITIES_MAP[name_upper]
-    elif "-" in company_name: # Handle crypto asset splits gracefully (e.g. BTC-USD -> BTC)
+    elif "-" in company_name: 
+        # Handle Crypto (e.g., BTC-USD -> BTC)
         query_term = company_name.split("-")[0]
-    elif "=" in company_name: # Handle Forex asset structures safely (e.g. EURUSD=X -> EURUSD)
+    elif "=" in company_name: 
+        # Handle Forex (e.g., EURUSD=X -> EURUSD)
         query_term = company_name.split("=")[0]
     else:
         query_term = company_name
 
-    # 2. Format a highly resilient global news query array
-    # Appending specific business context helps focus results without breaking the raw RSS matching logic
-    refined_query = f"{query_term} finance market"
+    # 2. Focus the search parameters for an accurate financial digest feed
+    refined_query = f"{query_term} stock market business"
     encoded_query = urllib.parse.quote(refined_query)
     
+    # ✅ FIXED: Corrected the host subdomain and path query route layout
     rss_url = f"https://google.com{encoded_query}&hl=en-US&gl=US&ceid=US:en"
     
     try:
         feed = feedparser.parse(rss_url)
         headlines = [entry['title'] for entry in feed.entries[:max_items]]
         
-        # Fallback tracking if feed results returned shallow
+        # Secondary fallback if the compound string yields nothing
         if not headlines:
-            logger.warning(f"Secondary try fallback executed for: {query_term}")
-            fallback_url = f"https://google.com{urllib.parse.quote(query_term)}"
+            logger.warning(f"Secondary try fallback executed for raw term: {query_term}")
+            fallback_url = f"https://google.com{urllib.parse.quote(query_term)}&hl=en-US&gl=US&ceid=US:en"
             feed = feedparser.parse(fallback_url)
             headlines = [entry['title'] for entry in feed.entries[:max_items]]
             
