@@ -2,12 +2,12 @@ import streamlit as st
 import yfinance as yf
 import matplotlib.pyplot as plt
 
-from .utils.yahoo_search import yahoo_autocomplete_search, extract_ticker
-from .utils.exchange_detection import detect_exchange
-from .utils.market_trends import get_recent_trend
-from .utils.news_scraper import get_news_headlines
-from .services.forecasting_engine import make_forecast
-from .services.llm_orchestrator import summarize_news_with_groq
+from src.utils.yahoo_search import yahoo_autocomplete_search, extract_ticker
+from src.utils.exchange_detection import detect_exchange
+from src.utils.market_trends import get_recent_trend
+from src.utils.news_scraper import get_news_headlines
+from src.services.forecasting_engine import make_forecast
+from src.services.llm_orchestrator import summarize_news_with_groq
 
 st.set_page_config(page_title="📈 Stock Predictor", layout="wide")
 
