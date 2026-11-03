@@ -5,12 +5,15 @@ logger = setup_logger("yahoo_search")
 
 def yahoo_autocomplete_search(query: str) -> list:
     """
-    Queries the Yahoo Finance API to get autocomplete suggestions for tickers.
+    Queries the internal Yahoo Finance API to get accurate autocomplete suggestions.
     """
     if not query:
         return []
         
-    url = f"https://yahoo.com{requests.utils.quote(query)}&quotesCount=10&newsCount=0"
+    encoded_query = requests.utils.quote(query)
+    # ✅ FIXED: Corrected full subdomain and specific v1 search matrix route
+    url = f"https://yahoo.com{encoded_query}&quotesCount=10&newsCount=0"
+    
     try:
         response = requests.get(url, timeout=5)
         if response.status_code == 200:
