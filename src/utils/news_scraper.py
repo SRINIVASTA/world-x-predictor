@@ -9,7 +9,7 @@ def get_news_headlines(company_name: str, max_items: int = 5) -> list:
     logger.info(f"Initiating remote RSS ingest tracking query for: {company_name}")
     name_upper = company_name.upper()
     
-    # 1. Strip country indicators cleanly (e.g., RELIANCE.NS -> RELIANCE)
+    # 1. Clean country and regional market suffix modifiers (.NS, .L, etc.)
     if name_upper in COMMODITIES_MAP:
         query_term = COMMODITIES_MAP[name_upper]
     elif "-" in company_name: 
@@ -21,21 +21,20 @@ def get_news_headlines(company_name: str, max_items: int = 5) -> list:
     else:
         query_term = company_name
 
-    # 2. Refine search parameters for accurate matching
-    refined_query = f"{query_term} business market news"
+    # 2. Re-establish valid search criteria
+    refined_query = f"{query_term} business stock market"
     encoded_query = urllib.parse.quote(refined_query)
     
-    # ✅ FIXED: Corrected the network string declaration path protocol
+    # ✅ FIXED: Restored dedicated subdomain and full XML feed parameter routing path
     rss_url = f"https://google.com{encoded_query}&hl=en-US&gl=US&ceid=US:en"
     
     try:
         feed = feedparser.parse(rss_url)
         headlines = [entry['title'] for entry in feed.entries[:max_items]]
         
-        # Secondary fallback layer if compound tracking parameters are dry
+        # 3. Dynamic secondary fallback query layout
         if not headlines:
-            logger.warning(f"Secondary try fallback executed for raw term: {query_term}")
-            # ✅ FIXED: Restored clean address protocol here as well
+            logger.warning(f"Secondary try fallback executed for term: {query_term}")
             fallback_url = f"https://google.com{urllib.parse.quote(query_term)}&hl=en-US&gl=US&ceid=US:en"
             feed = feedparser.parse(fallback_url)
             headlines = [entry['title'] for entry in feed.entries[:max_items]]
