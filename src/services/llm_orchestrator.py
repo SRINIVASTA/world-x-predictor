@@ -15,7 +15,6 @@ def summarize_news_with_groq(headlines: list) -> str:
         
         prompt = "Summarize the following recent news headlines for investors:\n\n" + "\n".join([f"- {h}" for h in headlines])
         
-        # ✅ FIXED: Migrated to Groq's active production successor model tier
         completion = client.chat.completions.create(
             model="qwen/qwen3.8-27b",
             messages=[
@@ -31,7 +30,13 @@ def summarize_news_with_groq(headlines: list) -> str:
             temperature=0.3,
             max_tokens=512
         )
-        return completion.choices.message.content.strip()
+        
+        # ✅ FIXED: Securely drill down using explicit list indexing to support the Qwen model architecture
+        if completion.choices and len(completion.choices) > 0:
+            return completion.choices[0].message.content.strip()
+        else:
+            return "⚠️ AI Error: The model returned an empty choice matrix."
+            
     except Exception as e:
         logger.error(f"Groq API transaction anomaly detected: {str(e)}")
         raise RuntimeError(f"AI Synthesis pipeline failed: {str(e)}")
