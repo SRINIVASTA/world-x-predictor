@@ -115,16 +115,24 @@ if predict_button and valid_ticker:
                 st.warning("No recent news found for this ticker.")
             else:
                 # Setup side-by-side columns to distribute data points cleanly
-                col1, col2 = st.columns([2, 1])
+                col1, col2 = st.columns()
+                
+                # Convert everything to standard text elements for the LLM matrix payload
+                raw_headlines_strings = []
+                for h in headlines:
+                    if isinstance(h, dict):
+                        raw_headlines_strings.append(h.get("title", ""))
+                    else:
+                        raw_headlines_strings.append(str(h))
                 
                 with col2:
                     st.markdown("<br>", unsafe_allow_html=True)  # Align nicely with the subheader
                     with st.spinner("Processing Groq AI Sentiment Matrices..."):
-                        # Call our optimized multi-task orchestrator function
+                        # Call our optimized multi-task orchestrator function using clean text rows
                         market_payload = analyze_and_summarize_news(
                             ticker=selected_ticker, 
                             asset_class="Multi-Asset", 
-                            headlines=headlines
+                            headlines=raw_headlines_strings
                         )
                         
                         # Extract quantitative summary indicators
@@ -142,7 +150,7 @@ if predict_button and valid_ticker:
                                 <h4 style="margin:0; color:{ui_color}; font-size:18px;">Score: {score:+.2f}</h4>
                             </div>
                             """, 
-                            unsafe_allow_html=True
+                            unsafe_allowed_html=True
                         )
 
                 with col1:
@@ -158,9 +166,17 @@ if predict_button and valid_ticker:
                         h_score = item.get("score", 0.0)
                         scores_map[h_txt.lower().strip()] = h_score
                     
-                    # Render headlines with their respective sentiment scores
+                    # Render headlines with their respective sentiment scores and dates
                     for h in headlines:
-                        h_clean = h.lower().strip()
+                        # Direct object data normalization checks
+                        if isinstance(h, dict):
+                            h_title = h.get("title", "")
+                            h_date = f" *({h.get('date', 'N/A')})*"
+                        else:
+                            h_title = str(h)
+                            h_date = ""  # Leaves blank if no date data exists
+                            
+                        h_clean = h_title.lower().strip()
                         
                         # Retrieve the specific headline score, default to 0.0 if not matched explicitly
                         individual_score = scores_map.get(h_clean, 0.0)
@@ -180,7 +196,7 @@ if predict_button and valid_ticker:
                         else:
                             badge = "🟡"
                             
-                        st.markdown(f"{badge} **[{individual_score:+.2f}]** {h}")
+                        st.markdown(f"{badge} **[{individual_score:+.2f}]**{h_date} {h_title}")
                 
                 # Full-width display for the summarized bullet items
                 st.markdown("### 📝 Investor Executive Summary")
