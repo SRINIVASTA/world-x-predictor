@@ -130,11 +130,15 @@ if predict_button and valid_ticker:
 
         # B. Prophet Center Forecast Line Trace
         fig.add_trace(go.Scatter(
-            x=forecast['ds'], 
-            y=forecast['yhat'], 
-            name="AI Target Forecast",
-            line=dict(color="#ff7f0e", width=2.5, dash="dash"),
-            hovertemplate=f"Predicted: {currency}%{{y:,.2f}}<extra></extra>"
+            x=forecast_ds, 
+            y=lower_list, 
+            fill='tonexty', 
+            fillcolor='rgba(255, 127, 14, 0.12)', 
+            line=dict(width=0), 
+            name="Confidence Range",
+            # ✅ FIXED: Explicitly map index [1] for Max Upper Bound and index [0] for Min Lower Bound
+            hovertemplate=f"Max Range: {currency}%{{customdata[1]:,.2f}}<br>Min Range: {currency}%{{customdata[0]:,.2f}}<extra></extra>",
+            customdata=list(zip(lower_list, upper_list))
         ))
 
         # Explicitly convert Series/NumPy columns to python native float arrays to stop validation crashes
