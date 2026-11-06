@@ -6,8 +6,12 @@ from config.logger_config import setup_logger
 
 logger = setup_logger("forecasting_engine")
 
-def make_forecast(ticker: str, timeframe: str):
-    logger.info(f"Generating forecast for {ticker} over {timeframe}")
+def make_forecast(ticker: str, timeframe: str, sentiment_score: float = 0.0):
+    """
+    Generates time-series price forecasts using Facebook Prophet, 
+    dynamically skewing prediction intervals based on live macro news sentiment indicators.
+    """
+    logger.info(f"Generating forecast for {ticker} over {timeframe} with sentiment modifier: {sentiment_score:+.2f}")
     try:
         stock = yf.Ticker(ticker)
         
@@ -35,9 +39,24 @@ def make_forecast(ticker: str, timeframe: str):
         future = model.make_future_dataframe(periods=periods)
         forecast = model.predict(future)
 
+        # 📊 Dynamic Sentiment Interval Adjustment Matrix
+        # A volatility scaler defines how heavily sentiment can shift the math model boundaries (10% max threshold here)
+        volatility_multiplier = 0.10 
+        sentiment_modifier = sentiment_score * volatility_multiplier
+
         predicted = forecast.iloc[-1]['yhat']
-        lower = forecast.iloc[-1]['yhat_lower']
-        upper = forecast.iloc[-1]['yhat_upper']
+        
+        # Apply structured skews to your time-series confidence bands
+        raw_lower = forecast.iloc[-1]['yhat_lower']
+        raw_upper = forecast.iloc[-1]['yhat_upper']
+        
+        # Bullish sentiment pushes both lines upward slightly; bearish sentiment pulls them down
+        lower = raw_lower * (1.0 + sentiment_modifier)
+        upper = raw_upper * (1.0 + sentiment_modifier)
+
+        # Prevent statistical breakdown flips where lower crosses upper due to massive skews
+        if lower > upper:
+            lower, upper = upper, lower
 
         return forecast, df, currency_symbol, predicted, lower, upper
     except Exception as e:
