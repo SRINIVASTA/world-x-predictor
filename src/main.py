@@ -90,8 +90,8 @@ if predict_button and valid_ticker:
                     headlines=raw_headlines_strings
                 )
                 sentiment_score = market_payload.get("composite_score", 0.0)
-
         # 2️⃣ STEP 2: Feed the Live Sentiment Modifier Score straight into Prophet Mathematical Pipeline
+        # (This block directly appends inside the conditional scope initiated in Block 1)
         forecast, df, currency, predicted, lower, upper = make_forecast(
             ticker=selected_ticker, 
             timeframe=timeframe, 
@@ -116,7 +116,7 @@ if predict_button and valid_ticker:
             emoji = "📈" if trend == "positive momentum" else "📉"
             st.info(f"Recent **past trend**: {trend} {emoji}")
 
-        # 📊 REFACTORED: Interactive Hover Plotly Chart Generation
+        # 📊 Interactive Hover Plotly Chart Generation with explicit type casting to resolve numpy issue
         fig = go.Figure()
 
         # A. Historical Closing Prices Line Trace
@@ -137,40 +137,45 @@ if predict_button and valid_ticker:
             hovertemplate=f"Predicted: {currency}%{{y:,.2f}}<extra></extra>"
         ))
 
+        # Explicitly convert Series/NumPy columns to python native float arrays to stop validation crashes
+        forecast_ds = forecast['ds'].tolist()
+        upper_list = [float(x) for x in forecast['yhat_upper']]
+        lower_list = [float(x) for x in forecast['yhat_lower']]
+
         # C. Sentiment-Adjusted Confidence Bound Bounds (Shaded Area Traces)
         fig.add_trace(go.Scatter(
-            x=forecast['ds'], 
-            y=upper, 
+            x=forecast_ds, 
+            y=upper_list, 
             line=dict(width=0), 
             showlegend=False, 
             hoverinfo='skip'
         ))
         
         fig.add_trace(go.Scatter(
-            x=forecast['ds'], 
-            y=lower, 
+            x=forecast_ds, 
+            y=lower_list, 
             fill='tonexty', 
             fillcolor='rgba(255, 127, 14, 0.12)', 
             line=dict(width=0), 
             name="Confidence Range",
-            hovertemplate=f"Max Range: {currency}%{{customdata[1]:,.2f}}<br>Min Range: {currency}%{{customdata[0]:,.2f}}<extra></extra>",
-            customdata=list(zip(lower, upper))
+            hovertemplate=f"Max Range: {currency}%{{customdata:,.2f}}<br>Min Range: {currency}%{{customdata:,.2f}}<extra></extra>",
+            customdata=list(zip(lower_list, upper_list))
         ))
 
         # D. Vertical Reference Flag for "Today" Axis
         fig.add_shape(
             type="line",
-            x0=df['ds'].iloc[-1], y0=df['y'].min() * 0.9,
-            x1=df['ds'].iloc[-1], y1=upper.max() * 1.1,
+            x0=df['ds'].iloc[-1], y0=float(df['y'].min()) * 0.9,
+            x1=df['ds'].iloc[-1], y1=max(upper_list) * 1.1,
             line=dict(color="rgba(255,255,255,0.4)", width=1.5, dash="dot"),
         )
 
         # E. Global Layout Theme Options Initialization
         fig.update_layout(
             title=dict(text=f"Interactive Technical Projection Matrix: {selected_ticker}", font=dict(size=16, color="#FFF")),
-            xaxis_title="Timeline Timeline",
+            xaxis_title="Timeline",
             yaxis_title=f"Asset Valuation Value ({currency})",
-            hovermode="x unified",  # Locks tooltips together onto a single crosshair box layout on hover
+            hovermode="x unified",  # Locks tooltips together onto a single crosshair layout
             plot_bgcolor="rgba(0,0,0,0)",
             paper_bgcolor="rgba(0,0,0,0)",
             margin=dict(l=10, r=10, t=45, b=10),
@@ -231,7 +236,6 @@ if predict_button and valid_ticker:
                                     break
                     
                     badge = "🟢" if individual_score >= 0.20 else "🔴" if individual_score <= -0.20 else "🟡"
-
                     st.markdown(f"{badge} **[{individual_score:+.2f}]**{h_date} {h_title}")
             
             st.markdown("### 📝 Investor Executive Summary")
