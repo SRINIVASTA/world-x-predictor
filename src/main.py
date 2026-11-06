@@ -114,8 +114,8 @@ if predict_button and valid_ticker:
             if not headlines:
                 st.warning("No recent news found for this ticker.")
             else:
-                # Setup side-by-side columns to distribute data points cleanly
-                col1, col2 = st.columns()
+                # ✅ FIXED: Explicitly defined '2' columns to clear the missing layout position argument
+                col1, col2 = st.columns(2)
                 
                 # Convert everything to standard text elements for the LLM matrix payload
                 raw_headlines_strings = []
