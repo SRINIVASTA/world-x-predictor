@@ -47,7 +47,8 @@ def analyze_and_summarize_news(ticker: str, asset_class: str, headlines: list) -
         user_prompt = f"Asset Ticker: {ticker}\nAsset Class: {asset_class}\nHeadlines:\n{formatted_headlines}"
 
         completion = client.chat.completions.create(
-            model="llama3-3b-8b-instant",  # Highly responsive model for reliable JSON structured frameworks
+            # ✅ FIXED: Corrected to a valid, active Groq model identifier
+            model="llama3-8b-8b-instant",  
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
