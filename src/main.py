@@ -10,7 +10,7 @@ for path in [current_dir, parent_dir]:
 
 import streamlit as st
 import yfinance as yf
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 
 from utils.yahoo_search import yahoo_autocomplete_search, extract_ticker
 from utils.exchange_detection import detect_exchange
@@ -116,17 +116,70 @@ if predict_button and valid_ticker:
             emoji = "📈" if trend == "positive momentum" else "📉"
             st.info(f"Recent **past trend**: {trend} {emoji}")
 
-        # Render Chart Visualizations
-        fig, ax = plt.subplots(figsize=(12, 6))
-        ax.plot(df['ds'], df['y'], label="Historical", color="blue")
-        ax.plot(forecast['ds'], forecast['yhat'], label="Forecast", color="orange")
-        ax.fill_between(forecast['ds'], forecast['yhat_lower'], forecast['yhat_upper'], color='orange', alpha=0.3)
-        ax.axvline(df['ds'].iloc[-1], color='gray', linestyle='--', label='Today')
-        ax.set_xlabel("Date")
-        ax.set_ylabel(f"Price ({currency})")
-        ax.legend()
-        ax.grid(True)
-        st.pyplot(fig)
+        # 📊 REFACTORED: Interactive Hover Plotly Chart Generation
+        fig = go.Figure()
+
+        # A. Historical Closing Prices Line Trace
+        fig.add_trace(go.Scatter(
+            x=df['ds'], 
+            y=df['y'], 
+            name="Historical Close",
+            line=dict(color="#1f77b4", width=2.5),
+            hovertemplate=f"Price: {currency}%{{y:,.2f}}<extra></extra>"
+        ))
+
+        # B. Prophet Center Forecast Line Trace
+        fig.add_trace(go.Scatter(
+            x=forecast['ds'], 
+            y=forecast['yhat'], 
+            name="AI Target Forecast",
+            line=dict(color="#ff7f0e", width=2.5, dash="dash"),
+            hovertemplate=f"Predicted: {currency}%{{y:,.2f}}<extra></extra>"
+        ))
+
+        # C. Sentiment-Adjusted Confidence Bound Bounds (Shaded Area Traces)
+        fig.add_trace(go.Scatter(
+            x=forecast['ds'], 
+            y=upper, 
+            line=dict(width=0), 
+            showlegend=False, 
+            hoverinfo='skip'
+        ))
+        
+        fig.add_trace(go.Scatter(
+            x=forecast['ds'], 
+            y=lower, 
+            fill='tonexty', 
+            fillcolor='rgba(255, 127, 14, 0.12)', 
+            line=dict(width=0), 
+            name="Confidence Range",
+            hovertemplate=f"Max Range: {currency}%{{customdata[1]:,.2f}}<br>Min Range: {currency}%{{customdata[0]:,.2f}}<extra></extra>",
+            customdata=list(zip(lower, upper))
+        ))
+
+        # D. Vertical Reference Flag for "Today" Axis
+        fig.add_shape(
+            type="line",
+            x0=df['ds'].iloc[-1], y0=df['y'].min() * 0.9,
+            x1=df['ds'].iloc[-1], y1=upper.max() * 1.1,
+            line=dict(color="rgba(255,255,255,0.4)", width=1.5, dash="dot"),
+        )
+
+        # E. Global Layout Theme Options Initialization
+        fig.update_layout(
+            title=dict(text=f"Interactive Technical Projection Matrix: {selected_ticker}", font=dict(size=16, color="#FFF")),
+            xaxis_title="Timeline Timeline",
+            yaxis_title=f"Asset Valuation Value ({currency})",
+            hovermode="x unified",  # Locks tooltips together onto a single crosshair box layout on hover
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            margin=dict(l=10, r=10, t=45, b=10),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            xaxis=dict(showgrid=True, gridcolor="#2D2D2D"),
+            yaxis=dict(showgrid=True, gridcolor="#2D2D2D", tickformat=",.2f")
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
 
         # 4️⃣ STEP 4: Render News Score Breakdown and Summaries Block
         if show_news and headlines:
@@ -137,7 +190,6 @@ if predict_button and valid_ticker:
             
             with col2:
                 st.markdown("<br>", unsafe_allow_html=True)
-                # Compute display metrics using sentiment payload extracted upfront
                 score = market_payload.get("composite_score", 0.0)
                 label = market_payload.get("label", "Neutral")
                 ui_color = "#2E7D32" if score >= 0.25 else "#C62828" if score <= -0.25 else "#EF6C00"
@@ -179,6 +231,7 @@ if predict_button and valid_ticker:
                                     break
                     
                     badge = "🟢" if individual_score >= 0.20 else "🔴" if individual_score <= -0.20 else "🟡"
+
                     st.markdown(f"{badge} **[{individual_score:+.2f}]**{h_date} {h_title}")
             
             st.markdown("### 📝 Investor Executive Summary")
