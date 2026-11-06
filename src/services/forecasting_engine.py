@@ -9,7 +9,7 @@ logger = setup_logger("forecasting_engine")
 def make_forecast(ticker: str, timeframe: str, sentiment_score: float = 0.0):
     """
     Generates time-series price forecasts using Facebook Prophet, 
-    dynamically skewing prediction intervals based on live macro news sentiment indicators.
+    dynamically skewing prediction targets and intervals based on live macro news sentiment indicators.
     """
     logger.info(f"Generating forecast for {ticker} over {timeframe} with sentiment modifier: {sentiment_score:+.2f}")
     try:
@@ -40,21 +40,21 @@ def make_forecast(ticker: str, timeframe: str, sentiment_score: float = 0.0):
         forecast = model.predict(future)
 
         # 📊 Dynamic Sentiment Interval Adjustment Matrix
-        # A volatility scaler defines how heavily sentiment can shift the math model boundaries (10% max threshold here)
+        # A volatility scaler defines how heavily sentiment can shift the math model boundaries (10% max threshold)
         volatility_multiplier = 0.10 
         sentiment_modifier = sentiment_score * volatility_multiplier
 
-        predicted = forecast.iloc[-1]['yhat']
-        
-        # Apply structured skews to your time-series confidence bands
+        # Extract base metrics from the model output dataframe
+        raw_predicted = forecast.iloc[-1]['yhat']
         raw_lower = forecast.iloc[-1]['yhat_lower']
         raw_upper = forecast.iloc[-1]['yhat_upper']
         
-        # Bullish sentiment pushes both lines upward slightly; bearish sentiment pulls them down
+        # ✅ FIXED: Apply the sentiment modifier uniformly across all metrics to prevent boundary crossover bugs
+        predicted = raw_predicted * (1.0 + sentiment_modifier)
         lower = raw_lower * (1.0 + sentiment_modifier)
         upper = raw_upper * (1.0 + sentiment_modifier)
 
-        # Prevent statistical breakdown flips where lower crosses upper due to massive skews
+        # Final structural protection loop to handle absolute floor boundaries
         if lower > upper:
             lower, upper = upper, lower
 
