@@ -114,7 +114,7 @@ if predict_button and valid_ticker:
             if not headlines:
                 st.warning("No recent news found for this ticker.")
             else:
-                # ✅ FIXED: Explicitly defined '2' columns to clear the missing layout position argument
+                # Explicitly defined '2' columns to clear layout parameters
                 col1, col2 = st.columns(2)
                 
                 # Convert everything to standard text elements for the LLM matrix payload
@@ -142,6 +142,7 @@ if predict_button and valid_ticker:
                         # Compute beautiful metric theme color boundaries dynamically
                         ui_color = "#2E7D32" if score >= 0.25 else "#C62828" if score <= -0.25 else "#EF6C00"
                         
+                        # ✅ FIXED: Corrected parameter keyword to unsafe_allow_html=True
                         st.markdown(
                             f"""
                             <div style="background-color:#1E1E1E; padding:18px; border-radius:8px; border-left: 6px solid {ui_color}; margin-top: 10px;">
@@ -150,7 +151,7 @@ if predict_button and valid_ticker:
                                 <h4 style="margin:0; color:{ui_color}; font-size:18px;">Score: {score:+.2f}</h4>
                             </div>
                             """, 
-                            unsafe_allowed_html=True
+                            unsafe_allow_html=True
                         )
 
                 with col1:
