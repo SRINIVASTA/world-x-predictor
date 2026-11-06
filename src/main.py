@@ -11,13 +11,13 @@ for path in [current_dir, parent_dir]:
 import streamlit as st
 import yfinance as yf
 import matplotlib.pyplot as plt
-from datetime import datetime
 
 from utils.yahoo_search import yahoo_autocomplete_search, extract_ticker
 from utils.exchange_detection import detect_exchange
 from utils.market_trends import get_recent_trend
 from utils.news_scraper import get_news_headlines
 from services.forecasting_engine import make_forecast
+# Imports the unified multi-task sentiment & summary engine
 from services.llm_orchestrator import analyze_and_summarize_news
 
 st.set_page_config(page_title="📈 Stock Predictor", layout="wide")
@@ -114,9 +114,10 @@ if predict_button and valid_ticker:
             if not headlines:
                 st.warning("No recent news found for this ticker.")
             else:
+                # Explicitly defined 2 equal columns to eliminate structural spacing errors
                 col1, col2 = st.columns(2)
                 
-                # Normalize raw list data types cleanly for the LLM matrix payload
+                # Convert structured dictionaries to string text values for the Groq engine payload
                 raw_headlines_strings = []
                 for h in headlines:
                     if isinstance(h, dict):
@@ -125,16 +126,20 @@ if predict_button and valid_ticker:
                         raw_headlines_strings.append(str(h))
                 
                 with col2:
-                    st.markdown("<br>", unsafe_allow_html=True)
+                    st.markdown("<br>", unsafe_allow_html=True)  # Align nicely with subheader
                     with st.spinner("Processing Groq AI Sentiment Matrices..."):
+                        # Call optimized multi-task orchestrator function using clean text rows
                         market_payload = analyze_and_summarize_news(
                             ticker=selected_ticker, 
                             asset_class="Multi-Asset", 
                             headlines=raw_headlines_strings
                         )
                         
+                        # Extract quantitative indicators
                         score = market_payload.get("composite_score", 0.0)
                         label = market_payload.get("label", "Neutral")
+                        
+                        # Compute metric color boundaries dynamically
                         ui_color = "#2E7D32" if score >= 0.25 else "#C62828" if score <= -0.25 else "#EF6C00"
                         
                         st.markdown(
@@ -151,38 +156,48 @@ if predict_button and valid_ticker:
                 with col1:
                     st.subheader("Recent Headlines & Score Breakdown:")
                     
+                    # Parse structural arrays from Groq output
                     breakdown_list = market_payload.get("breakdown", [])
+                    
+                    # Create lookup dictionary mapping headlines to numerical scores
                     scores_map = {}
                     for item in breakdown_list:
-                        scores_map[item.get("headline", "").lower().strip()] = item.get("score", 0.0)
+                        h_txt = item.get("headline", "")
+                        h_score = item.get("score", 0.0)
+                        scores_map[h_txt.lower().strip()] = h_score
                     
-                    # Target current calendar context for missing timestamps fallback
-                    today_str = datetime.now().strftime("%b %d, %Y")
-                    
+                    # Render headlines alongside authentic publication dates and badges
                     for h in headlines:
                         if isinstance(h, dict):
                             h_title = h.get("title", "")
                             h_date = f" *({h.get('date', 'N/A')})*"
                         else:
                             h_title = str(h)
-                            # ✅ FIXED: Fallback parser extracts date text implicitly or appends target execution date
-                            if "2026" in h_title:
-                                h_date = " *(Nov 06, 2026)*"
-                            else:
-                                h_date = f" *({today_str})*"
+                            h_date = ""  # Safe fallback if input type varies
                             
                         h_clean = h_title.lower().strip()
+                        
+                        # Retrieve assigned headline score, fallback to neutral if necessary
                         individual_score = scores_map.get(h_clean, 0.0)
                         
+                        # Sub-string fuzzy matching logic block
                         if h_clean not in scores_map:
                             for key, val in scores_map.items():
                                 if key in h_clean or h_clean in key:
                                     individual_score = val
                                     break
                         
-                        badge = "🟢" if individual_score >= 0.20 else "🔴" if individual_score <= -0.20 else "🟡"
+                        # Assign visual emoji anchors based on score metrics
+                        if individual_score >= 0.20:
+                            badge = "🟢"
+                        elif individual_score <= -0.20:
+                            badge = "🔴"
+                        else:
+                            badge = "🟡"
+                            
                         st.markdown(f"{badge} **[{individual_score:+.2f}]**{h_date} {h_title}")
                 
+                # Full-width display for summarized bullet metrics
                 st.markdown("### 📝 Investor Executive Summary")
                 st.write(market_payload.get("summary", "No summary could be parsed."))
 
