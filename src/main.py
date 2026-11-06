@@ -91,7 +91,6 @@ if predict_button and valid_ticker:
                 )
                 sentiment_score = market_payload.get("composite_score", 0.0)
         # 2️⃣ STEP 2: Feed the Live Sentiment Modifier Score straight into Prophet Mathematical Pipeline
-        # (This block directly appends inside the conditional scope initiated in Block 1)
         forecast, df, currency, predicted, lower, upper = make_forecast(
             ticker=selected_ticker, 
             timeframe=timeframe, 
@@ -116,7 +115,7 @@ if predict_button and valid_ticker:
             emoji = "📈" if trend == "positive momentum" else "📉"
             st.info(f"Recent **past trend**: {trend} {emoji}")
 
-        # 📊 Interactive Hover Plotly Chart Generation with explicit type casting to resolve numpy issue
+        # 📊 Interactive Hover Plotly Chart Generation
         fig = go.Figure()
 
         # A. Historical Closing Prices Line Trace
@@ -130,15 +129,11 @@ if predict_button and valid_ticker:
 
         # B. Prophet Center Forecast Line Trace
         fig.add_trace(go.Scatter(
-            x=forecast_ds, 
-            y=lower_list, 
-            fill='tonexty', 
-            fillcolor='rgba(255, 127, 14, 0.12)', 
-            line=dict(width=0), 
-            name="Confidence Range",
-            # ✅ FIXED: Explicitly map index [1] for Max Upper Bound and index [0] for Min Lower Bound
-            hovertemplate=f"Max Range: {currency}%{{customdata[1]:,.2f}}<br>Min Range: {currency}%{{customdata[0]:,.2f}}<extra></extra>",
-            customdata=list(zip(lower_list, upper_list))
+            x=forecast['ds'], 
+            y=forecast['yhat'], 
+            name="AI Target Forecast",
+            line=dict(color="#ff7f0e", width=2.5, dash="dash"),
+            hovertemplate=f"Predicted: {currency}%{{y:,.2f}}<extra></extra>"
         ))
 
         # Explicitly convert Series/NumPy columns to python native float arrays to stop validation crashes
@@ -162,7 +157,8 @@ if predict_button and valid_ticker:
             fillcolor='rgba(255, 127, 14, 0.12)', 
             line=dict(width=0), 
             name="Confidence Range",
-            hovertemplate=f"Max Range: {currency}%{{customdata:,.2f}}<br>Min Range: {currency}%{{customdata:,.2f}}<extra></extra>",
+            # Explicitly targeted index 1 for Max Upper Range and index 0 for Min Lower Range
+            hovertemplate=f"Max Range: {currency}%{{customdata[1]:,.2f}}<br>Min Range: {currency}%{{customdata[0]:,.2f}}<extra></extra>",
             customdata=list(zip(lower_list, upper_list))
         ))
 
