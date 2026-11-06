@@ -17,7 +17,6 @@ from utils.exchange_detection import detect_exchange
 from utils.market_trends import get_recent_trend
 from utils.news_scraper import get_news_headlines
 from services.forecasting_engine import make_forecast
-# Imports the unified multi-task sentiment & summary engine
 from services.llm_orchestrator import analyze_and_summarize_news
 
 st.set_page_config(page_title="📈 Stock Predictor", layout="wide")
@@ -70,12 +69,36 @@ predict_button = st.sidebar.button("🔮 Predict Price")
 
 if predict_button and valid_ticker:
     try:
+        # Initialize Core Metrics Pre-Flight
         stock = yf.Ticker(selected_ticker)
         company = stock.info.get("shortName", selected_ticker)
         exchange = detect_exchange(selected_ticker)
+        
+        # 1️⃣ STEP 1: Pre-fetch Headlines & Execute Groq AI Sentiment Extraction First
+        headlines = get_news_headlines(selected_ticker)
+        sentiment_score = 0.0  # Baseline fallback default parameter
+        market_payload = {}
+        
+        if show_news and headlines:
+            # Convert dict models to raw string tokens safely for Groq Context
+            raw_headlines_strings = [h.get("title", "") if isinstance(h, dict) else str(h) for h in headlines]
+            
+            with st.spinner("Processing Groq AI Sentiment Matrices..."):
+                market_payload = analyze_and_summarize_news(
+                    ticker=selected_ticker, 
+                    asset_class="Multi-Asset", 
+                    headlines=raw_headlines_strings
+                )
+                sentiment_score = market_payload.get("composite_score", 0.0)
 
-        forecast, df, currency, predicted, lower, upper = make_forecast(selected_ticker, timeframe)
+        # 2️⃣ STEP 2: Feed the Live Sentiment Modifier Score straight into Prophet Mathematical Pipeline
+        forecast, df, currency, predicted, lower, upper = make_forecast(
+            ticker=selected_ticker, 
+            timeframe=timeframe, 
+            sentiment_score=sentiment_score
+        )
 
+        # 3️⃣ STEP 3: Render Primary Visual Layouts
         st.subheader(f"{selected_ticker} ({company})")
         st.write(f"Exchange: `{exchange}`")
 
@@ -84,16 +107,16 @@ if predict_button and valid_ticker:
         delta = current_price - previous_price
         pct = (delta / previous_price) * 100 if previous_price != 0 else 0
 
-        # Formatted using localized currency characters directly 
         st.metric("Current Price", f"{currency}{current_price:,.2f}", f"{delta:+.2f} ({pct:+.2f}%)")
         st.success(f"📊 Predicted Target: {currency}{predicted:,.2f}")
-        st.caption(f"Confidence Bound Range: {currency}{lower:,.2f} — {currency}{upper:,.2f}")
+        st.caption(f"Confidence Bound Range (Sentiment-Adjusted): {currency}{lower:,.2f} — {currency}{upper:,.2f}")
 
         trend = get_recent_trend(df)
         if trend:
             emoji = "📈" if trend == "positive momentum" else "📉"
             st.info(f"Recent **past trend**: {trend} {emoji}")
 
+        # Render Chart Visualizations
         fig, ax = plt.subplots(figsize=(12, 6))
         ax.plot(df['ds'], df['y'], label="Historical", color="blue")
         ax.plot(forecast['ds'], forecast['yhat'], label="Forecast", color="orange")
@@ -105,101 +128,65 @@ if predict_button and valid_ticker:
         ax.grid(True)
         st.pyplot(fig)
 
-        # 📰 News & Sentiment Processing Pipeline
-        if show_news:
+        # 4️⃣ STEP 4: Render News Score Breakdown and Summaries Block
+        if show_news and headlines:
             st.markdown("---")
             st.header("📰 Latest News & AI Sentiment Analysis")
-            headlines = get_news_headlines(selected_ticker)
             
-            if not headlines:
-                st.warning("No recent news found for this ticker.")
-            else:
-                # Explicitly defined 2 equal columns to eliminate structural spacing errors
-                col1, col2 = st.columns(2)
+            col1, col2 = st.columns(2)
+            
+            with col2:
+                st.markdown("<br>", unsafe_allow_html=True)
+                # Compute display metrics using sentiment payload extracted upfront
+                score = market_payload.get("composite_score", 0.0)
+                label = market_payload.get("label", "Neutral")
+                ui_color = "#2E7D32" if score >= 0.25 else "#C62828" if score <= -0.25 else "#EF6C00"
                 
-                # Convert structured dictionaries to string text values for the Groq engine payload
-                raw_headlines_strings = []
+                st.markdown(
+                    f"""
+                    <div style="background-color:#1E1E1E; padding:18px; border-radius:8px; border-left: 6px solid {ui_color}; margin-top: 10px;">
+                        <span style="color:#888; font-size:11px; font-weight:bold; letter-spacing:0.5px; text-transform: uppercase;">AI Sentiment Engine</span>
+                        <h3 style="margin:5px 0; color:#FFF; font-size:22px;">{label}</h3>
+                        <h4 style="margin:0; color:{ui_color}; font-size:18px;">Score: {score:+.2f}</h4>
+                    </div>
+                    """, 
+                    unsafe_allow_html=True
+                )
+
+            with col1:
+                st.subheader("Recent Headlines & Score Breakdown:")
+                
+                breakdown_list = market_payload.get("breakdown", [])
+                scores_map = {}
+                for item in breakdown_list:
+                    scores_map[item.get("headline", "").lower().strip()] = item.get("score", 0.0)
+                
                 for h in headlines:
                     if isinstance(h, dict):
-                        raw_headlines_strings.append(h.get("title", ""))
+                        h_title = h.get("title", "")
+                        h_date = f" *({h.get('date', 'N/A')})*"
                     else:
-                        raw_headlines_strings.append(str(h))
-                
-                with col2:
-                    st.markdown("<br>", unsafe_allow_html=True)  # Align nicely with subheader
-                    with st.spinner("Processing Groq AI Sentiment Matrices..."):
-                        # Call optimized multi-task orchestrator function using clean text rows
-                        market_payload = analyze_and_summarize_news(
-                            ticker=selected_ticker, 
-                            asset_class="Multi-Asset", 
-                            headlines=raw_headlines_strings
-                        )
+                        h_title = str(h)
+                        h_date = ""
                         
-                        # Extract quantitative indicators
-                        score = market_payload.get("composite_score", 0.0)
-                        label = market_payload.get("label", "Neutral")
-                        
-                        # Compute metric color boundaries dynamically
-                        ui_color = "#2E7D32" if score >= 0.25 else "#C62828" if score <= -0.25 else "#EF6C00"
-                        
-                        st.markdown(
-                            f"""
-                            <div style="background-color:#1E1E1E; padding:18px; border-radius:8px; border-left: 6px solid {ui_color}; margin-top: 10px;">
-                                <span style="color:#888; font-size:11px; font-weight:bold; letter-spacing:0.5px; text-transform: uppercase;">AI Sentiment Engine</span>
-                                <h3 style="margin:5px 0; color:#FFF; font-size:22px;">{label}</h3>
-                                <h4 style="margin:0; color:{ui_color}; font-size:18px;">Score: {score:+.2f}</h4>
-                            </div>
-                            """, 
-                            unsafe_allow_html=True
-                        )
-
-                with col1:
-                    st.subheader("Recent Headlines & Score Breakdown:")
+                    h_clean = h_title.lower().strip()
+                    individual_score = scores_map.get(h_clean, 0.0)
                     
-                    # Parse structural arrays from Groq output
-                    breakdown_list = market_payload.get("breakdown", [])
-                    
-                    # Create lookup dictionary mapping headlines to numerical scores
-                    scores_map = {}
-                    for item in breakdown_list:
-                        h_txt = item.get("headline", "")
-                        h_score = item.get("score", 0.0)
-                        scores_map[h_txt.lower().strip()] = h_score
-                    
-                    # Render headlines alongside authentic publication dates and badges
-                    for h in headlines:
-                        if isinstance(h, dict):
-                            h_title = h.get("title", "")
-                            h_date = f" *({h.get('date', 'N/A')})*"
-                        else:
-                            h_title = str(h)
-                            h_date = ""  # Safe fallback if input type varies
-                            
-                        h_clean = h_title.lower().strip()
-                        
-                        # Retrieve assigned headline score, fallback to neutral if necessary
-                        individual_score = scores_map.get(h_clean, 0.0)
-                        
-                        # Sub-string fuzzy matching logic block
-                        if h_clean not in scores_map:
-                            for key, val in scores_map.items():
-                                if key in h_clean or h_clean in key:
+                    if h_clean not in scores_map:
+                        for key, val in scores_map.items():
+                            if key in h_clean or h_clean in key:
                                     individual_score = val
                                     break
-                        
-                        # Assign visual emoji anchors based on score metrics
-                        if individual_score >= 0.20:
-                            badge = "🟢"
-                        elif individual_score <= -0.20:
-                            badge = "🔴"
-                        else:
-                            badge = "🟡"
-                            
-                        st.markdown(f"{badge} **[{individual_score:+.2f}]**{h_date} {h_title}")
-                
-                # Full-width display for summarized bullet metrics
-                st.markdown("### 📝 Investor Executive Summary")
-                st.write(market_payload.get("summary", "No summary could be parsed."))
+                    
+                    badge = "🟢" if individual_score >= 0.20 else "🔴" if individual_score <= -0.20 else "🟡"
+                    st.markdown(f"{badge} **[{individual_score:+.2f}]**{h_date} {h_title}")
+            
+            st.markdown("### 📝 Investor Executive Summary")
+            st.write(market_payload.get("summary", "No summary could be parsed."))
+            
+        elif show_news and not headlines:
+            st.markdown("---")
+            st.warning("No recent news found for this ticker asset.")
 
     except Exception as e:
         st.error(f"❌ Execution error: {e}")
