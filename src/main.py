@@ -61,11 +61,12 @@ timeframe = st.sidebar.selectbox(
     ['1 day', '1 week', '1 month', '3 months', '6 months', '1 year', '2 year']
 )
 
-show_news = False
-if "GROQ_API_KEY" in st.secrets and st.secrets["GROQ_API_KEY"]:
-    show_news = st.sidebar.checkbox("Show News & Summary", value=True)
-else:
-    st.sidebar.error("⚠️ News component disabled: 'GROQ_API_KEY' is missing in Secrets.")
+# --- FIXED NEWS BYPASS LOGIC: Renders news feed even if Groq secret tokens are missing ---
+show_news = st.sidebar.checkbox("Show News Feed Layout", value=True)
+has_groq = "GROQ_API_KEY" in st.secrets and bool(st.secrets["GROQ_API_KEY"])
+
+if not has_groq:
+    st.sidebar.warning("💡 AI Summary deactivated (Missing GROQ_API_KEY). Showing raw news layout text only.")
 
 predict_button = st.sidebar.button("🔮 Predict Price")
 
@@ -92,13 +93,23 @@ if predict_button and valid_ticker:
         
         if show_news and headlines:
             raw_headlines_strings = [h.get("title", "") if isinstance(h, dict) else str(h) for h in headlines]
-            with st.spinner("Processing Groq AI Sentiment Matrices..."):
-                market_payload = analyze_and_summarize_news(
-                    ticker=selected_ticker, 
-                    asset_class="Multi-Asset", 
-                    headlines=raw_headlines_strings
-                )
-                sentiment_score = market_payload.get("composite_score", 0.0)
+            
+            if has_groq:
+                with st.spinner("Processing Groq AI Sentiment Matrices..."):
+                    market_payload = analyze_and_summarize_news(
+                        ticker=selected_ticker, 
+                        asset_class="Multi-Asset", 
+                        headlines=raw_headlines_strings
+                    )
+                    sentiment_score = market_payload.get("composite_score", 0.0)
+            else:
+                # Neutral fallback setup parameters when running without API tokens
+                market_payload = {
+                    "label": "Neutral Status",
+                    "summary": "AI summary generation bypassed. Please configure GROQ_API_KEY token settings inside your project configuration.",
+                    "breakdown": []
+                }
+                sentiment_score = 0.0
 
         forecast, df, currency, predicted, lower, upper = make_forecast(
             ticker=selected_ticker, 
