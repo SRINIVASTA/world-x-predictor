@@ -1,5 +1,6 @@
 import feedparser
 import urllib.parse
+import urllib.request
 from datetime import datetime
 from config.base_settings import COMMODITIES_MAP
 from config.logger_config import setup_logger
@@ -9,13 +10,13 @@ logger = setup_logger("news_scraper")
 def get_news_headlines(company_name: str, max_items: int = 5) -> list:
     """
     Scrapes the Google News RSS feed for a given asset company/ticker.
-    Cleans up input string extensions, falls back safely to broad terms,
-    and returns a clean payload array mapped for the PDF dispatch pipelines.
+    Cleans up input string extensions, utilizes explicit browser agent headers 
+    to bypass cloud firewalls, and returns parsed payload metrics arrays.
     """
     logger.info(f"Initiating remote RSS ingest tracking query for: {company_name}")
     name_upper = company_name.upper()
     
-    # 1. FIXED: Correctly grab the first element [0] from string splits to keep it as a string
+    # 1. Clean country extensions or exchange flags cleanly
     if name_upper in COMMODITIES_MAP:
         query_term = COMMODITIES_MAP[name_upper]
     elif "-" in company_name: 
@@ -27,7 +28,7 @@ def get_news_headlines(company_name: str, max_items: int = 5) -> list:
     else:
         query_term = company_name
 
-    # 2. Broadened query keyword format: Search for the clean asset identifier directly
+    # 2. Structure search string parameters safely
     encoded_query = urllib.parse.quote(query_term)
     rss_url = f"https://google.com{encoded_query}&hl=en-US&gl=US&ceid=US:en"
     
@@ -36,7 +37,7 @@ def get_news_headlines(company_name: str, max_items: int = 5) -> list:
         for entry in entries[:max_items]:
             title = entry.get('title', '')
             
-            # Extract RSS timestamps structure mappings securely
+            # Extract and parse dynamic publication date timestamps
             date_str = ""
             published_parsed = entry.get('published_parsed')
             
@@ -55,19 +56,32 @@ def get_news_headlines(company_name: str, max_items: int = 5) -> list:
                 })
         return results
 
+    def fetch_feed_safely(url: str):
+        """Helper to inject headers and prevent connection resets from Google RSS endpoints."""
+        try:
+            req = urllib.request.Request(
+                url, 
+                headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+            )
+            with urllib.request.urlopen(req, timeout=10) as response:
+                return feedparser.parse(response.read())
+        except Exception as fetch_err:
+            logger.error(f"HTTP request layer execution drop: {fetch_err}")
+            return None
+
     try:
-        # Run execution loop on the broad query parameters
-        feed = feedparser.parse(rss_url)
-        headlines = parse_entries(feed.entries)
+        # Fetch primary broad query feed context
+        feed = fetch_feed_safely(rss_url)
+        headlines = parse_entries(feed.entries) if feed else []
         
-        # 3. Secure secondary fallback query layer using refined "stock" term if broad term returns zero
+        # 3. Secure secondary fallback layer if primary broad search results returned zero
         if not headlines:
             logger.warning(f"Secondary try fallback executed for stock term: {query_term} stock")
             fallback_url = f"https://google.com{urllib.parse.quote(query_term + ' stock')}&hl=en-US&gl=US&ceid=US:en"
-            feed = feedparser.parse(fallback_url)
-            headlines = parse_entries(feed.entries)
+            feed = fetch_feed_safely(fallback_url)
+            headlines = parse_entries(feed.entries) if feed else []
             
         return headlines
     except Exception as e:
-        logger.error(f"Failed to fetch or parse RSS feed from endpoint: {str(e)}")
+        logger.error(f"Failed to compile RSS dataset matrix: {str(e)}")
         return []
