@@ -3,11 +3,17 @@ from unittest.mock import patch, MagicMock
 from src.utils.news_scraper import get_news_headlines
 
 # =====================================================================
-# NEWS SCRAPER MODULE TESTS: FEEDPARSER RSS PARSING ASSERTS
+# NEWS SCRAPER MODULE TESTS: SAFELY MOCKING URLLIB + FEEDPARSER
 # =====================================================================
 @patch('src.utils.news_scraper.feedparser.parse')
-def test_get_news_headlines_success(mock_feed_parse):
+@patch('src.utils.news_scraper.urllib.request.urlopen')
+def test_get_news_headlines_success(mock_urlopen, mock_feed_parse):
     """Validates query extraction strings are scrubbed and outputs match expected shape schemas."""
+    # Arrange: Mock the context manager for urllib.request.urlopen
+    mock_response = MagicMock()
+    mock_response.read.return_value = b"<xml>mock content</xml>"
+    mock_urlopen.return_value.__enter__.return_value = mock_response
+
     # Arrange: Build mock feed entry structures mirroring actual feedparser responses
     mock_entry = MagicMock()
     mock_entry.get.side_effect = lambda key, default=None: {
@@ -30,14 +36,20 @@ def test_get_news_headlines_success(mock_feed_parse):
     assert headlines[0]['date'] == 'Nov 07, 2026'
     
     # Verify proper asset extension cleaning string logic applied matching news_scraper components
-    mock_feed_parse.assert_called_once()
-    called_url = mock_feed_parse.call_args[0][0]
-    assert "BTC" in called_url  # Suffix "-USD" successfully stripped away into a clean string
+    mock_urlopen.assert_called_once()
+    called_req = mock_urlopen.call_args[0][0]
+    assert "BTC" in called_req.full_url  # Suffix "-USD" successfully stripped away into a clean string
 
 
 @patch('src.utils.news_scraper.feedparser.parse')
-def test_get_news_headlines_empty_fallback(mock_feed_parse):
+@patch('src.utils.news_scraper.urllib.request.urlopen')
+def test_get_news_headlines_empty_fallback(mock_urlopen, mock_feed_parse):
     """Confirms primary missing records successfully trigger secondary try fallback layers."""
+    # Arrange: Mock response context managers for two consecutive calls
+    mock_response = MagicMock()
+    mock_response.read.return_value = b"<xml>mock content</xml>"
+    mock_urlopen.return_value.__enter__.return_value = mock_response
+
     # Arrange: Return empty arrays on first attempt, valid items on secondary fallback sweep
     mock_empty_feed = MagicMock(entries=[])
     
@@ -56,5 +68,7 @@ def test_get_news_headlines_empty_fallback(mock_feed_parse):
     # Assert
     assert len(headlines) == 1
     assert headlines[0]['title'] == 'Alternative Commodity Gold Trading Flow'
+    
     # Ensure double call execution paths tracking primary and secondary endpoint routing channels
+    assert mock_urlopen.call_count == 2
     assert mock_feed_parse.call_count == 2
