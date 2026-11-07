@@ -15,7 +15,7 @@ def get_news_headlines(company_name: str, max_items: int = 5) -> list:
     logger.info(f"Initiating remote RSS ingest tracking query for: {company_name}")
     name_upper = company_name.upper()
     
-    # 1. Strip country indicators, marketplace markers, or exchange suffixes cleanly
+    # 1. FIXED: Correctly grab the first element [0] from string splits to keep it as a string
     if name_upper in COMMODITIES_MAP:
         query_term = COMMODITIES_MAP[name_upper]
     elif "-" in company_name: 
@@ -27,7 +27,7 @@ def get_news_headlines(company_name: str, max_items: int = 5) -> list:
     else:
         query_term = company_name
 
-    # 2. Broadened query keyword format: Search for the asset identifier directly
+    # 2. Broadened query keyword format: Search for the clean asset identifier directly
     encoded_query = urllib.parse.quote(query_term)
     rss_url = f"https://google.com{encoded_query}&hl=en-US&gl=US&ceid=US:en"
     
