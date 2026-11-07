@@ -3,7 +3,7 @@ from unittest.mock import patch, MagicMock
 from src.utils.news_scraper import get_news_headlines
 
 # =====================================================================
-# 3️⃣ NEWS SCRAPER MODULE TESTS: FEEDPARSER RSS PARSING ASSERTS
+# NEWS SCRAPER MODULE TESTS: FEEDPARSER RSS PARSING ASSERTS
 # =====================================================================
 @patch('src.utils.news_scraper.feedparser.parse')
 def test_get_news_headlines_success(mock_feed_parse):
@@ -32,7 +32,7 @@ def test_get_news_headlines_success(mock_feed_parse):
     # Verify proper asset extension cleaning string logic applied matching news_scraper components
     mock_feed_parse.assert_called_once()
     called_url = mock_feed_parse.call_args[0][0]
-    assert "BTC" in called_url  # Suffix "-USD" successfully stripped away
+    assert "BTC" in called_url  # Suffix "-USD" successfully stripped away into a clean string
 
 
 @patch('src.utils.news_scraper.feedparser.parse')
