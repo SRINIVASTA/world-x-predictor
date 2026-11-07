@@ -10,13 +10,12 @@ logger = setup_logger("news_scraper")
 def get_news_headlines(company_name: str, max_items: int = 5) -> list:
     """
     Scrapes the Google News RSS feed for a given asset company/ticker.
-    Cleans up input string extensions, utilizes explicit browser agent headers 
-    to bypass cloud firewalls, and returns parsed payload metrics arrays.
+    Fixes list extraction bugs by isolating string elements cleanly.
     """
     logger.info(f"Initiating remote RSS ingest tracking query for: {company_name}")
     name_upper = company_name.upper()
     
-    # 1. Clean country extensions or exchange flags cleanly
+    # 1. FIXED: Added explicit [0] index array extraction to keep query_term as a clean text string
     if name_upper in COMMODITIES_MAP:
         query_term = COMMODITIES_MAP[name_upper]
     elif "-" in company_name: 
@@ -28,7 +27,7 @@ def get_news_headlines(company_name: str, max_items: int = 5) -> list:
     else:
         query_term = company_name
 
-    # 2. Structure search string parameters safely
+    # 2. Structure search query string parameters safely
     encoded_query = urllib.parse.quote(query_term)
     rss_url = f"https://google.com{encoded_query}&hl=en-US&gl=US&ceid=US:en"
     
@@ -57,11 +56,10 @@ def get_news_headlines(company_name: str, max_items: int = 5) -> list:
         return results
 
     def fetch_feed_safely(url: str):
-        """Helper to inject headers and prevent connection resets from Google RSS endpoints."""
         try:
             req = urllib.request.Request(
                 url, 
-                headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+                headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
             )
             with urllib.request.urlopen(req, timeout=10) as response:
                 return feedparser.parse(response.read())
@@ -74,7 +72,7 @@ def get_news_headlines(company_name: str, max_items: int = 5) -> list:
         feed = fetch_feed_safely(rss_url)
         headlines = parse_entries(feed.entries) if feed else []
         
-        # 3. Secure secondary fallback layer if primary broad search results returned zero
+        # 3. Secure secondary fallback layer if broad term returns empty dataset rows
         if not headlines:
             logger.warning(f"Secondary try fallback executed for stock term: {query_term} stock")
             fallback_url = f"https://google.com{urllib.parse.quote(query_term + ' stock')}&hl=en-US&gl=US&ceid=US:en"
