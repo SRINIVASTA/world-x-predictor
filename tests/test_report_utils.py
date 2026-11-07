@@ -4,12 +4,11 @@ from unittest.mock import patch, MagicMock
 from src.utils.report_utils import generate_dashboard_pdf, send_bulk_report_emails
 
 # =====================================================================
-# 1️⃣ MODULE A TEST: PDF COMPILATION ASSERTS
+# 1️⃣ MODULE A TEST: PDF LAYOUT COMPILATION ASSERTS
 # =====================================================================
 @patch('src.utils.report_utils.HTML')
 def test_generate_dashboard_pdf_success(mock_html_cls):
     """Verifies that the PDF generator processes string templates and outputs a target file path."""
-    # Arrange
     mock_html_instance = MagicMock()
     mock_html_cls.return_value = mock_html_instance
     
@@ -19,7 +18,6 @@ def test_generate_dashboard_pdf_success(mock_html_cls):
         {"title": "Crude Oil Consolidates Below Resistance", "date": "Nov 06, 2026"}
     ]
 
-    # Act
     result_path = generate_dashboard_pdf(
         ticker="AAPL",
         company="Apple Inc.",
@@ -34,19 +32,17 @@ def test_generate_dashboard_pdf_success(mock_html_cls):
         output_path=test_output_path
     )
 
-    # Assert
     assert result_path == test_output_path
     mock_html_cls.assert_called_once()
     mock_html_instance.write_pdf.assert_called_once_with(test_output_path)
 
 
 # =====================================================================
-# 2️⃣ MODULE B TESTS: BULK EMAIL SMTP LOOPS
+# 2️⃣ MODULE B TESTS: SECURE SMTP BULK EMAIL DISPATCH LOOPS
 # =====================================================================
 @patch('src.utils.report_utils.smtplib.SMTP')
 def test_send_bulk_report_emails_success(mock_smtp_cls):
-    """Validates successful secure bulk email dispatch execution paths over fake loops."""
-    # Arrange
+    """Validates successful secure bulk email dispatch execution paths over mock loops."""
     mock_server_instance = MagicMock()
     mock_smtp_cls.return_value = mock_server_instance
     
@@ -56,7 +52,6 @@ def test_send_bulk_report_emails_success(mock_smtp_cls):
     test_subject = "Test Analytics Subject"
     test_body = "Hello, please review the attached document data profile."
 
-    # Act
     total_dispatched = send_bulk_report_emails(
         email_sender=test_sender,
         app_password=test_pass,
@@ -66,19 +61,18 @@ def test_send_bulk_report_emails_success(mock_smtp_cls):
         attachment_path=None
     )
 
-    # Assert
     assert total_dispatched == 3  # Verified 3 unique clean strings parsed out
     mock_smtp_cls.assert_called_once_with('://gmail.com', 587)
     mock_server_instance.starttls.assert_called_once()
     mock_server_instance.login.assert_called_once_with(test_sender, test_pass)
     
-    # Ensure sendmail execution array was invoked individually for each user to prevent header leakage
+    # Ensure sendmail execution array was invoked individually for each recipient to prevent BCC leakage
     assert mock_server_instance.sendmail.call_count == 3
     mock_server_instance.quit.assert_called_once()
 
 
 def test_send_bulk_report_emails_empty_recipient_exception():
-    """Asserts that a descriptive ValueError is thrown if input strings resolve into an empty space array."""
+    """Asserts that a descriptive ValueError is thrown if input strings resolve into empty arrays."""
     with pytest.raises(ValueError, match="Please provide at least one valid recipient address destination."):
         send_bulk_report_emails(
             email_sender="sender@test.com",
