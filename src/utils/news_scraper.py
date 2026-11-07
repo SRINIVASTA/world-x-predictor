@@ -4,19 +4,18 @@ from datetime import datetime
 from config.base_settings import COMMODITIES_MAP
 from config.logger_config import setup_logger
 
-# Initialize structural project logger instance
 logger = setup_logger("news_scraper")
 
 def get_news_headlines(company_name: str, max_items: int = 5) -> list:
     """
     Scrapes the Google News RSS feed for a given asset company/ticker.
-    Cleans up input string extensions, falls back safely to raw terms if needed,
+    Cleans up input string extensions, falls back safely to broad terms,
     and returns a clean payload array mapped for the PDF dispatch pipelines.
     """
     logger.info(f"Initiating remote RSS ingest tracking query for: {company_name}")
     name_upper = company_name.upper()
     
-    # 1️⃣ STEP 1: Strip country indicators, marketplace markers, or exchange suffixes cleanly
+    # 1. Strip country indicators, marketplace markers, or exchange suffixes cleanly
     if name_upper in COMMODITIES_MAP:
         query_term = COMMODITIES_MAP[name_upper]
     elif "-" in company_name: 
@@ -28,11 +27,8 @@ def get_news_headlines(company_name: str, max_items: int = 5) -> list:
     else:
         query_term = company_name
 
-    # 2️⃣ STEP 2: Balance query formatting and append standard context keywords
-    refined_query = f"{query_term} stock"
-    encoded_query = urllib.parse.quote(refined_query)
-    
-    # Establish valid news feed subdomain routing structure
+    # 2. Broadened query keyword format: Search for the asset identifier directly
+    encoded_query = urllib.parse.quote(query_term)
     rss_url = f"https://google.com{encoded_query}&hl=en-US&gl=US&ceid=US:en"
     
     def parse_entries(entries) -> list:
@@ -46,7 +42,6 @@ def get_news_headlines(company_name: str, max_items: int = 5) -> list:
             
             if published_parsed:
                 try:
-                    # Convert structural time tuples natively to a clean standardized string format
                     date_str = datetime(*published_parsed[:6]).strftime("%b %d, %Y")
                 except Exception:
                     date_str = datetime.now().strftime("%b %d, %Y")
@@ -54,7 +49,6 @@ def get_news_headlines(company_name: str, max_items: int = 5) -> list:
                 date_str = datetime.now().strftime("%b %d, %Y")
                 
             if title:
-                # Returns clean metadata objects matching report requirements exactly
                 results.append({
                     "title": title,
                     "date": date_str
@@ -62,14 +56,14 @@ def get_news_headlines(company_name: str, max_items: int = 5) -> list:
         return results
 
     try:
-        # Run execution loop on the primary refined target parameters
+        # Run execution loop on the broad query parameters
         feed = feedparser.parse(rss_url)
         headlines = parse_entries(feed.entries)
         
-        # 3️⃣ STEP 3: Execute secondary fallback layer if primary criteria returned zero objects
+        # 3. Secure secondary fallback query layer using refined "stock" term if broad term returns zero
         if not headlines:
-            logger.warning(f"Secondary try fallback executed for raw term: {query_term}")
-            fallback_url = f"https://google.com{urllib.parse.quote(query_term)}&hl=en-US&gl=US&ceid=US:en"
+            logger.warning(f"Secondary try fallback executed for stock term: {query_term} stock")
+            fallback_url = f"https://google.com{urllib.parse.quote(query_term + ' stock')}&hl=en-US&gl=US&ceid=US:en"
             feed = feedparser.parse(fallback_url)
             headlines = parse_entries(feed.entries)
             
