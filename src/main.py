@@ -221,6 +221,7 @@ if predict_button and valid_ticker:
 
         st.plotly_chart(fig, use_container_width=True)
         # 4️⃣ STEP 4: Render News Score Breakdown and Summaries Block
+        # 4️⃣ STEP 4: Render News Score Breakdown and Summaries Block
         if show_news and headlines:
             st.markdown("---")
             st.header("📰 Latest News & AI Sentiment Analysis")
@@ -273,7 +274,6 @@ if predict_button and valid_ticker:
             st.markdown("### 📝 Investor Executive Summary")
             st.write(summary_text)
             
-            # Update active cached storage payload array records securely
             st.session_state.last_report_data["scores_map"] = scores_map
             
         elif show_news and not headlines:
@@ -284,7 +284,7 @@ if predict_button and valid_ticker:
         st.error(f"❌ Execution error: {e}")
 
 # =====================================================================
-# UNIFIED REPORT ENGINE: PASSING THE SCORES MATRIX INTO COMPILATION
+# UNIFIED CLOUD-PROOF DISPATCH RUNTIME SYSTEM
 # =====================================================================
 if st.session_state.last_report_data:
     pdf_filename = "world_x_market_snapshot.pdf"
@@ -319,14 +319,12 @@ if st.session_state.last_report_data:
             
         plt.tight_layout()
         
-        # Save structural image data streams cleanly via internal RAM buffer allocations
         buf = io.BytesIO()
         plt.savefig(buf, format='png', facecolor=fig_pdf.get_facecolor(), edgecolor='none', bbox_inches='tight')
         buf.seek(0)
         chart_base64_str = base64.b64encode(buf.read()).decode('utf-8')
         plt.close(fig_pdf)
         
-        # Compile print-ready white report containing inline chart streams and AI scores map
         generate_dashboard_pdf(
             ticker=data["ticker"], company=data["company"], current_p=data["current_p"],
             predicted_p=data["predicted_p"], bound_low=data["bound_low"], bound_high=data["bound_high"],
@@ -353,21 +351,23 @@ if st.session_state.last_report_data:
                 st.sidebar.error("Please enter at least one recipient email address.")
             else:
                 try:
-                    email_sender = st.secrets["gmail"]["username"]
-                    app_password = st.secrets["gmail"]["app_password"]
+                    # Look up unblockable Web API token key
+                    api_key = st.secrets["RESEND_API_KEY"]
                 except KeyError:
-                    st.sidebar.error("Missing credentials! Verify configuration inside `.streamlit/secrets.toml`.")
+                    st.sidebar.error("Missing configuration secret key! Add 'RESEND_API_KEY' inside dashboard advanced options.")
                     st.stop()
                 
                 try:
                     total_sent = send_bulk_report_emails(
-                        email_sender=email_sender, app_password=app_password,
-                        recipient_input=email_receiver_input, subject=mail_subject,
-                        body=mail_body, attachment_path=pdf_filename
+                        api_key=api_key,
+                        recipient_input=email_receiver_input, 
+                        subject=mail_subject,
+                        body=mail_body, 
+                        attachment_path=pdf_filename
                     )
-                    st.sidebar.success(f"Email(s) sent successfully to {total_sent} recipient(s)! 🚀")
+                    st.sidebar.success(f"✨ Report successfully emailed to {total_sent} recipient(s)! 🚀")
                 except Exception as mail_err:
-                    st.sidebar.error(f"Network block active on host firewall: {mail_err}. Use the Download Button above instead!")
+                    st.sidebar.error(f"Transmission API error: {mail_err}")
 
         if os.path.exists(pdf_filename):
             os.remove(pdf_filename)
