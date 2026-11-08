@@ -285,7 +285,42 @@ if predict_button and valid_ticker:
     except Exception as e:
         st.error(f"❌ Execution error: {e}")
 
-# --- EMAIL DISPATCH ACTION TRIGGER ---
+# --- NEW BYPASS LAYOUT: GENERATES DIRECT BROWSER PDF DOWNLOAD BUTTON ON THE SIDEBAR ---
+if st.session_state.last_report_data:
+    pdf_filename = "world_x_market_snapshot.pdf"
+    data = st.session_state.last_report_data
+    
+    try:
+        # Pre-compile the high-resolution PDF snapshot onto local workspace disk channels
+        generate_dashboard_pdf(
+            ticker=data["ticker"], company=data["company"], current_p=data["current_p"],
+            predicted_p=data["predicted_p"], bound_low=data["bound_low"], bound_high=data["bound_high"],
+            sentiment_lbl=data["sentiment_lbl"], sentiment_scr=data["sentiment_scr"], 
+            summary_text=data["summary_text"], headlines=data["headlines"], output_path=pdf_filename
+        )
+        
+        # Read compiled binary file bytes cleanly into memory context
+        with open(pdf_filename, "rb") as f:
+            pdf_bytes = f.read()
+            
+        st.sidebar.markdown("---")
+        st.sidebar.subheader("📥 Download Snapshot Report")
+        st.sidebar.download_button(
+            label="💾 Download Dashboard PDF",
+            data=pdf_bytes,
+            file_name=f"WORLDX_{data['ticker']}_Report.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
+        
+        # Clear temporary file allocation maps safely from the instance
+        if os.path.exists(pdf_filename):
+            os.remove(pdf_filename)
+            
+    except Exception as pdf_err:
+        st.sidebar.error(f"Error compiling layout preview download asset: {pdf_err}")
+
+# --- EMAIL BACKUP ROUTE (SMTP) ---
 if st.sidebar.button("📬 Send Email Report"):
     if not st.session_state.last_report_data:
         st.sidebar.error("Please execute a price prediction calculation first to compile data maps.")
@@ -323,6 +358,6 @@ if st.sidebar.button("📬 Send Email Report"):
                 
             st.sidebar.success(f"Email(s) dispatched successfully to {total_sent} recipient(s)! 🚀")
         except Exception as mail_err:
-            st.sidebar.error(f"Erreur lors de l’envoi de l’e-mail : {mail_err}")
+            st.sidebar.error(f"Network block active on host firewall: {mail_err}. Use the Download Button above instead!")
 
 st.sidebar.markdown("**Examples for Input:** AAPL, RELIANCE.NS, BTC-USD, EURUSD=X, GC=F, CL=F")
