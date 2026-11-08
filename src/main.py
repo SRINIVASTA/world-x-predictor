@@ -71,7 +71,7 @@ if not has_groq:
 
 predict_button = st.sidebar.button("🔮 Predict Price")
 
-# --- INTEGRATED SIDEBAR BULK DISPATCH FORM ---
+# --- FIXED: ALWAYS VISIBLE SIDEBAR DISPATCH FORM ---
 st.sidebar.markdown("---")
 st.sidebar.subheader("✉️ Automated PDF Dispatch")
 email_receiver_input = st.sidebar.text_input('Recipient Email(s) (separate with commas)')
@@ -105,7 +105,6 @@ if predict_button and valid_ticker:
                     )
                     sentiment_score = market_payload.get("composite_score", 0.0)
             else:
-                # Neutral fallback setup parameters when running without API tokens
                 market_payload = {
                     "label": "Neutral Status",
                     "summary": "AI summary generation bypassed. Please configure GROQ_API_KEY token settings inside your project configuration.",
@@ -128,7 +127,7 @@ if predict_button and valid_ticker:
         label = market_payload.get("label", "Neutral")
         summary_text = market_payload.get("summary", "No analytical content found.")
         
-        # FIXED: Cache the raw calculation dataframes into session memory alongside other metrics
+        # Cache the calculation dataframes into session memory alongside other metrics
         st.session_state.last_report_data = {
             "ticker": selected_ticker,
             "company": company,
@@ -140,8 +139,8 @@ if predict_button and valid_ticker:
             "sentiment_scr": sentiment_score,
             "summary_text": summary_text,
             "headlines": headlines,
-            "df": df,              # Saved for the report engine scoped access
-            "forecast": forecast   # Saved for the report engine scoped access
+            "df": df,              
+            "forecast": forecast   
         }
 
         # 3️⃣ STEP 3: Render Primary Visual Layouts
@@ -160,7 +159,6 @@ if predict_button and valid_ticker:
         # 📊 Interactive Hover Plotly Chart Generation
         fig = go.Figure()
 
-        # A. Historical Closing Prices Line Trace
         fig.add_trace(go.Scatter(
             x=df['ds'], 
             y=df['y'], 
@@ -169,7 +167,6 @@ if predict_button and valid_ticker:
             hovertemplate=f"Price: {currency}%{{y:,.2f}}<extra></extra>"
         ))
 
-        # B. Prophet Center Forecast Line Trace
         fig.add_trace(go.Scatter(
             x=forecast['ds'], 
             y=forecast['yhat'], 
@@ -178,12 +175,10 @@ if predict_button and valid_ticker:
             hovertemplate=f"Predicted: {currency}%{{y:,.2f}}<extra></extra>"
         ))
 
-        # Explicitly convert Series/NumPy columns to python native float arrays to stop validation crashes
         forecast_ds = forecast['ds'].tolist()
         upper_list = [float(x) for x in forecast['yhat_upper']]
         lower_list = [float(x) for x in forecast['yhat_lower']]
 
-        # C. Sentiment-Adjusted Confidence Bound Bounds (Shaded Area Traces)
         fig.add_trace(go.Scatter(
             x=forecast_ds, 
             y=upper_list, 
@@ -203,7 +198,6 @@ if predict_button and valid_ticker:
             customdata=list(zip(lower_list, upper_list))
         ))
 
-        # D. Vertical Reference Flag for "Today" Axis
         fig.add_shape(
             type="line",
             x0=df['ds'].iloc[-1], y0=float(df['y'].min()) * 0.9,
@@ -211,7 +205,6 @@ if predict_button and valid_ticker:
             line=dict(color="rgba(255,255,255,0.4)", width=1.5, dash="dot"),
         )
 
-        # E. Global Layout Theme Options Initialization
         fig.update_layout(
             title=dict(text=f"Interactive Technical Projection Matrix: {selected_ticker}", font=dict(size=16, color="#FFF")),
             xaxis_title="Timeline",
@@ -287,7 +280,7 @@ if predict_button and valid_ticker:
     except Exception as e:
         st.error(f"❌ Execution error: {e}")
 
-# --- FIXED ENGINE BYPASS LAYOUT: GENERATES CHART EXPORTS VIA MATPLOTLIB IN NORMAL LIGHT THEME ---
+# --- FIXED: UNLINKED AND EXTRACTED THE ENTIRE PDF PREVIEW GENERATION FROM OUTSIDE THE RUNTIME WRAPPER ---
 if st.session_state.last_report_data:
     pdf_filename = "world_x_market_snapshot.pdf"
     chart_filename = "temp_chart_snapshot.png"
@@ -300,25 +293,16 @@ if st.session_state.last_report_data:
         import matplotlib.pyplot as plt
         import matplotlib.dates as mdates
         
-        # FIXED: Configured light theme parameters for normal print output formats
         plt.rcdefaults() 
         fig_pdf, ax = plt.subplots(figsize=(8, 3.5), dpi=200)
         fig_pdf.patch.set_facecolor('#ffffff')
         ax.set_facecolor('#f8fafc')
         
-        # A. Plot Historical Close Data
-        ax.plot(df_cached['ds'], df_cached['y'], color='#1f77b4', label='Historical Close', linewidth=2)
-        
-        # B. Plot Forecast Target Core
-        ax.plot(forecast_cached['ds'], forecast_cached['yhat'], color='#ff7f0e', linestyle='--', label='AI Target Forecast', linewidth=2)
-        
-        # C. Shaded Confidence Range Intervals
-        ax.fill_between(forecast_cached['ds'], forecast_cached['yhat_lower'], forecast_cached['yhat_upper'], color='#ff7f0e', alpha=0.15, label='Confidence Range')
-        
-        # D. Add vertical reference flag using a dark slate tracking line ('#33415566')
+        ax.plot(df_cached['ds'], df_cached['y'], color='#1f77b4', linewidth=2)
+        ax.plot(forecast_cached['ds'], forecast_cached['yhat'], color='#ff7f0e', linestyle='--', linewidth=2)
+        ax.fill_between(forecast_cached['ds'], forecast_cached['yhat_lower'], forecast_cached['yhat_upper'], color='#ff7f0e', alpha=0.15)
         ax.axvline(x=df_cached['ds'].iloc[-1], color='#33415566', linestyle=':', linewidth=1.5)
         
-        # Spacing adjustments and labels formatting strings matching standard light parameters
         ax.set_title(f"Technical Projection Matrix: {data['ticker']}", fontsize=11, color='#0f172a', pad=10, weight='bold')
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
         ax.tick_params(colors='#64748b', labelsize=8)
@@ -331,7 +315,6 @@ if st.session_state.last_report_data:
         plt.savefig(chart_filename, facecolor=fig_pdf.get_facecolor(), edgecolor='none', bbox_inches='tight')
         plt.close(fig_pdf)
         
-        # Pre-compile the high-resolution PDF snapshot passing chart image file targets
         generate_dashboard_pdf(
             ticker=data["ticker"], company=data["company"], current_p=data["current_p"],
             predicted_p=data["predicted_p"], bound_low=data["bound_low"], bound_high=data["bound_high"],
@@ -340,7 +323,6 @@ if st.session_state.last_report_data:
             chart_img_path=chart_filename, output_path=pdf_filename
         )
         
-        # Read compiled binary file bytes cleanly into memory context
         with open(pdf_filename, "rb") as f:
             pdf_bytes = f.read()
             
@@ -354,7 +336,6 @@ if st.session_state.last_report_data:
             use_container_width=True
         )
         
-        # Clear temporary file allocations safely from the server instance workspace
         for temp_file in [pdf_filename, chart_filename]:
             if os.path.exists(temp_file):
                 os.remove(temp_file)
@@ -362,7 +343,8 @@ if st.session_state.last_report_data:
     except Exception as pdf_err:
         st.sidebar.error(f"Error compiling layout preview download asset: {pdf_err}")
 
-# --- EMAIL BACKUP ROUTE (SMTP) ---
+# --- FIXED: EMAIL ACTION BUTTON IS NOW ALWAYS ACCESSIBLE AT THE SIDEBAR LAYER ---
+st.sidebar.markdown("---")
 if st.sidebar.button("📬 Send Email Report"):
     if not st.session_state.last_report_data:
         st.sidebar.error("Please execute a price prediction calculation first to compile data maps.")
@@ -384,7 +366,8 @@ if st.sidebar.button("📬 Send Email Report"):
             df_cached = data["df"]
             forecast_cached = data["forecast"]
             
-            # Re-generate graph image context via matplotlib normal light mapping parameters
+            import matplotlib.pyplot as plt
+            import matplotlib.dates as mdates
             plt.rcdefaults()
             fig_pdf, ax = plt.subplots(figsize=(8, 3.5), dpi=200)
             fig_pdf.patch.set_facecolor('#ffffff')
