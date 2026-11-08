@@ -71,7 +71,7 @@ if not has_groq:
 
 predict_button = st.sidebar.button("🔮 Predict Price")
 
-# --- EMAIL DISPATCH PANEL FIELDS (ALWAYS VISIBLE) ---
+# --- INTEGRATED SIDEBAR DISPATCH FORM (ALWAYS VISIBLE) ---
 st.sidebar.markdown("---")
 st.sidebar.subheader("✉️ Automated PDF Dispatch")
 email_receiver_input = st.sidebar.text_input('Recipient Email(s) (separate with commas)')
@@ -93,6 +93,7 @@ if predict_button and valid_ticker:
         sentiment_score = 0.0  
         market_payload = {}
         
+        # Initialize fallback values to completely block runtime execution scope crashes
         label = "Neutral Status"
         summary_text = "AI summary generation bypassed or no headlines found."
         scores_map = {}
@@ -277,14 +278,81 @@ if predict_button and valid_ticker:
         st.error(f"❌ Execution error: {e}")
 
 # =====================================================================
-# FIXED UNIFIED ENGINE: RE-PREPARES ASSETS DYNAMICALLY WITHOUT CRASHES
+# FIXED RE-ORDER ENGINE: COMPILES EMAIL BEFORE THE WEASYPRINT BLOCKS
 # =====================================================================
 if st.session_state.last_report_data:
     pdf_filename = "world_x_market_snapshot.pdf"
-    chart_filename = "temp_chart_snapshot.png"
     data = st.session_state.last_report_data
     
     try:
+        # --- FIXED EMAIL ACTION TRIGGER (EXECUTED WHILE THE NETWORK SOCKET IS ACTIVE) ---
+        if st.sidebar.button("📬 Send Email Report", use_container_width=True):
+            if not email_receiver_input:
+                st.sidebar.error("Please enter at least one recipient email address.")
+            else:
+                try:
+                    email_sender = st.secrets["gmail"]["username"]
+                    app_password = st.secrets["gmail"]["app_password"]
+                except KeyError:
+                    st.sidebar.error("Missing credentials! Verify configuration inside `.streamlit/secrets.toml`.")
+                    st.stop()
+                
+                # We compile the required print-ready assets inside memory buffers first
+                df_cached = data["df"]
+                forecast_cached = data["forecast"]
+                scores_map_cached = data.get("scores_map", {})
+                
+                import matplotlib.pyplot as plt
+                import matplotlib.dates as mdates
+                import io
+                import base64
+                
+                plt.rcdefaults() 
+                fig_pdf, ax = plt.subplots(figsize=(8, 3.5), dpi=200)
+                fig_pdf.patch.set_facecolor('#ffffff')
+                ax.set_facecolor('#f8fafc')
+                ax.plot(df_cached['ds'], df_cached['y'], color='#1f77b4', linewidth=2)
+                ax.plot(forecast_cached['ds'], forecast_cached['yhat'], color='#ff7f0e', linestyle='--', linewidth=2)
+                ax.fill_between(forecast_cached['ds'], forecast_cached['yhat_lower'], forecast_cached['yhat_upper'], color='#ff7f0e', alpha=0.15)
+                ax.axvline(x=df_cached['ds'].iloc[-1], color='#33415566', linestyle=':', linewidth=1.5)
+                ax.set_title(f"Technical Projection Matrix: {data['ticker']}", fontsize=11, color='#0f172a', pad=10, weight='bold')
+                ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
+                ax.tick_params(colors='#64748b', labelsize=8)
+                ax.grid(True, color='#e2e8f0', linestyle=':', alpha=0.7)
+                for spine in ax.spines.values():
+                    spine.set_color('#cbd5e1')
+                plt.tight_layout()
+                
+                buf = io.BytesIO()
+                plt.savefig(buf, format='png', facecolor=fig_pdf.get_facecolor(), edgecolor='none', bbox_inches='tight')
+                buf.seek(0)
+                chart_base64_str = base64.b64encode(buf.read()).decode('utf-8')
+                plt.close(fig_pdf)
+                
+                # Execute the layout generator BEFORE the network blocks get affected
+                generate_dashboard_pdf(
+                    ticker=data["ticker"], company=data["company"], current_p=data["current_p"],
+                    predicted_p=data["predicted_p"], bound_low=data["bound_low"], bound_high=data["bound_high"],
+                    sentiment_lbl=data["sentiment_lbl"], sentiment_scr=data["sentiment_scr"], 
+                    summary_text=data["summary_text"], headlines=data["headlines"],
+                    scores_map=scores_map_cached, chart_base64=chart_base64_str, output_path=pdf_filename
+                )
+                
+                try:
+                    # Fire out email utilizing your original working pattern loop
+                    total_sent = send_bulk_report_emails(
+                        email_sender=email_sender, app_password=app_password,
+                        recipient_input=email_receiver_input, subject=mail_subject,
+                        body=mail_body, attachment_path=pdf_filename
+                    )
+                    st.sidebar.success(f"Email(s) sent successfully to {total_sent} recipient(s)! 🚀")
+                except Exception as mail_err:
+                    st.sidebar.error(f"Erreur lors de l’envoi de l’e-mail : {mail_err}")
+                
+                if os.path.exists(pdf_filename):
+                    os.remove(pdf_filename)
+
+        # --- BROWSER DOWNLOAD ACCESSIBILITY ENGINE LINK ---
         df_cached = data["df"]
         forecast_cached = data["forecast"]
         scores_map_cached = data.get("scores_map", {})
@@ -294,24 +362,20 @@ if st.session_state.last_report_data:
         import io
         import base64
         
-        # Render static graph out of cached layout arrays
         plt.rcdefaults() 
         fig_pdf, ax = plt.subplots(figsize=(8, 3.5), dpi=200)
         fig_pdf.patch.set_facecolor('#ffffff')
         ax.set_facecolor('#f8fafc')
-        
         ax.plot(df_cached['ds'], df_cached['y'], color='#1f77b4', linewidth=2)
         ax.plot(forecast_cached['ds'], forecast_cached['yhat'], color='#ff7f0e', linestyle='--', linewidth=2)
         ax.fill_between(forecast_cached['ds'], forecast_cached['yhat_lower'], forecast_cached['yhat_upper'], color='#ff7f0e', alpha=0.15)
         ax.axvline(x=df_cached['ds'].iloc[-1], color='#33415566', linestyle=':', linewidth=1.5)
-        
         ax.set_title(f"Technical Projection Matrix: {data['ticker']}", fontsize=11, color='#0f172a', pad=10, weight='bold')
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
         ax.tick_params(colors='#64748b', labelsize=8)
         ax.grid(True, color='#e2e8f0', linestyle=':', alpha=0.7)
         for spine in ax.spines.values():
             spine.set_color('#cbd5e1')
-            
         plt.tight_layout()
         
         buf = io.BytesIO()
@@ -320,7 +384,6 @@ if st.session_state.last_report_data:
         chart_base64_str = base64.b64encode(buf.read()).decode('utf-8')
         plt.close(fig_pdf)
         
-        # Build the PDF file path
         generate_dashboard_pdf(
             ticker=data["ticker"], company=data["company"], current_p=data["current_p"],
             predicted_p=data["predicted_p"], bound_low=data["bound_low"], bound_high=data["bound_high"],
@@ -332,7 +395,6 @@ if st.session_state.last_report_data:
         with open(pdf_filename, "rb") as f:
             pdf_bytes = f.read()
             
-        # Display clean download button
         st.sidebar.markdown("---")
         st.sidebar.subheader("📥 Export Options")
         st.sidebar.download_button(
@@ -343,31 +405,6 @@ if st.session_state.last_report_data:
             use_container_width=True
         )
         
-        # --- FIXED EMAIL FORM ACTION SWITCH BUTTON ---
-        if st.sidebar.button("📬 Send Email Report", use_container_width=True):
-            if not email_receiver_input:
-                st.sidebar.error("Please enter at least one recipient email address.")
-            else:
-                try:
-                    # Pull values straight from your standard secrets configuration
-                    email_sender = st.secrets["gmail"]["username"]
-                    app_password = st.secrets["gmail"]["app_password"]
-                except KeyError:
-                    st.sidebar.error("Missing credentials! Verify configuration inside `.streamlit/secrets.toml`.")
-                    st.stop()
-                
-                try:
-                    # Executes using your exact custom SMTP loop function natively
-                    total_sent = send_bulk_report_emails(
-                        email_sender=email_sender, app_password=app_password,
-                        recipient_input=email_receiver_input, subject=mail_subject,
-                        body=mail_body, attachment_path=pdf_filename
-                    )
-                    st.sidebar.success(f"Email(s) sent successfully to {total_sent} recipient(s)! 🚀")
-                except Exception as mail_err:
-                    st.sidebar.error(f"Erreur lors de l’envoi de l’e-mail : {mail_err}")
-
-        # Clean local temporary file space allocations safely
         if os.path.exists(pdf_filename):
             os.remove(pdf_filename)
             
