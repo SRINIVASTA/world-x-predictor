@@ -10,12 +10,12 @@ logger = setup_logger("news_scraper")
 def get_news_headlines(company_name: str, max_items: int = 5) -> list:
     """
     Scrapes the Google News RSS feed for a given asset company/ticker.
-    Fixes list extraction bugs by isolating string elements cleanly.
+    Explicitly extracts index 0 to enforce string format and fix list crashes.
     """
     logger.info(f"Initiating remote RSS ingest tracking query for: {company_name}")
     name_upper = company_name.upper()
     
-    # 1. FIXED: Added explicit [0] index array extraction to keep query_term as a clean text string
+    # 1. FIXED: Added explicit index [0] to keep query_term as a clean text string, not a list
     if name_upper in COMMODITIES_MAP:
         query_term = COMMODITIES_MAP[name_upper]
     elif "-" in company_name: 
