@@ -58,8 +58,12 @@ def generate_dashboard_pdf(output_path="world_x_desktop_snapshot.pdf"):
     </head>
     <body>
         <header>
-            <h1 class="header-title">📈 WORLD-X: Multi-Asset Price Predictor</h1>
+            <h1 class="header-title">WORLD-X: Asset Performance Analytics</h1>
             <p class="header-subtitle">Stocks | Crypto | Forex ₹ | Metals | Crude Oil — One Platform for Global Markets</p>
+            <p class="header-subtitle">Automated Quantitative Intelligence & Valuation Briefing</p>
+            <p class="market-disclaimer" style="font-style: italic; font-size: 0.85rem; color: #cc0000; margin-top: 5px;">
+                <strong>Risk Warning:</strong> Financial market investments are subject to market risks. Past performance is not indicative of future results. Trade responsibly.
+            </p>
         </header>
 
         <div class="section-title">📊 Live Market Watch</div>
