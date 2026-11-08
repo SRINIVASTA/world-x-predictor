@@ -26,9 +26,11 @@ st.set_page_config(page_title="📈 Stock Predictor", layout="wide")
 
 st.markdown(
     """
-    <h1 style='text-align: center;'>📈 <strong>WORLD-X</strong>: Multi-Asset Price Predictor</h1>
-    <h3 style='text-align: center; font-weight: normal;'>Stocks | Crypto | Forex ₹ | Metals | Crude Oil</h3>
-    <p style='text-align: center;'>🌍 One Platform for Global Markets</p>
+    <h1 style='text-align: center;'><strong>WORLD-X</strong>: Asset Performance Analytics</h1>
+    <h3 style='text-align: center; font-weight: normal; color: #666666;'>Automated Quantitative Intelligence & Valuation Briefing</h3>
+    <p style='text-align: center; font-style: italic; font-size: 0.85rem; color: #cc0000; margin-top: 15px;'>
+        ⚠️ <strong>Risk Warning:</strong> Investments in financial markets are subject to market risks. Past performance is not indicative of future results.
+    </p>
     """,
     unsafe_allow_html=True
 )
