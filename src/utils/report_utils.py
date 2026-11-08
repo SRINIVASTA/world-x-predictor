@@ -118,7 +118,7 @@ def generate_dashboard_pdf(ticker, company, current_p, predicted_p, bound_low, b
     HTML(string=html_content).write_pdf(output_path)
     return output_path
 
-# FIXED: Restore exact working parameters mapping signature
+
 def send_bulk_report_emails(email_sender, app_password, recipient_input, subject, body, attachment_path=None):
     """
     Exclusively handles parsing distinct list endpoints and executing secure delivery loops
@@ -128,29 +128,39 @@ def send_bulk_report_emails(email_sender, app_password, recipient_input, subject
     if not recipient_list:
         raise ValueError("Please provide at least one valid recipient address destination.")
     
-    # Established baseline secure loop connection setup blocks matching your script
-    server = smtplib.SMTP('://gmail.com', 587)
+    # FIXED: Replaced invalid '://gmail.com' string with functional address
+    server = smtplib.SMTP('smtp.gmail.com', 587)
     server.starttls()
     server.login(email_sender, app_password)
+    
     try:
         for receiver in recipient_list:
+            # FIXED: Repaired cut-off block and constructed clean multipart payload
             msg = MIMEMultipart()
             msg['From'] = email_sender
             msg['To'] = receiver
             msg['Subject'] = subject
+            
+            # Attach the email message body text
             msg.attach(MIMEText(body, 'plain'))
             
+            # Safely encode and attach the generated PDF report if present
             if attachment_path and os.path.exists(attachment_path):
                 with open(attachment_path, "rb") as attachment:
                     part = MIMEBase("application", "octet-stream")
                     part.set_payload(attachment.read())
                     encode_base64(part)
-                    part.add_header("Content-Disposition", f"attachment; filename={os.path.basename(attachment_path)}")
+                    part.add_header(
+                        "Content-Disposition",
+                        f"attachment; filename={os.path.basename(attachment_path)}",
+                    )
                     msg.attach(part)
-                    
+            
             server.sendmail(email_sender, receiver, msg.as_string())
+            
+            # Anti-spam delay pacing
             if len(recipient_list) > 1:
                 time.sleep(1)
+                
     finally:
         server.quit()
-    return len(recipient_list)
