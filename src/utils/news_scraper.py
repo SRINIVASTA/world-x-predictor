@@ -10,12 +10,12 @@ logger = setup_logger("news_scraper")
 def get_news_headlines(company_name: str, max_items: int = 5) -> list:
     """
     Scrapes the Google News RSS feed for a given asset company/ticker.
-    Explicitly extracts index 0 to enforce string format and fix list crashes.
+    Explicitly fixes the variable assignment glitch on string splits.
     """
     logger.info(f"Initiating remote RSS ingest tracking query for: {company_name}")
     name_upper = company_name.upper()
     
-    # 1. FIXED: Added explicit index [0] to keep query_term as a clean text string, not a list
+    # 1. FIXED: Correctly assign the extracted index 0 string back to query_term
     if name_upper in COMMODITIES_MAP:
         query_term = COMMODITIES_MAP[name_upper]
     elif "-" in company_name: 
@@ -29,7 +29,7 @@ def get_news_headlines(company_name: str, max_items: int = 5) -> list:
 
     # 2. Structure search query string parameters safely
     encoded_query = urllib.parse.quote(query_term)
-    rss_url = f"https://google.com{encoded_query}&hl=en-US&gl=US&ceid=US:en"
+    rss_url = f"https://news.google.com/rss/search?q={encoded_query}&hl=en-US&gl=US&ceid=US:en"
     
     def parse_entries(entries) -> list:
         results = []
@@ -59,7 +59,7 @@ def get_news_headlines(company_name: str, max_items: int = 5) -> list:
         try:
             req = urllib.request.Request(
                 url, 
-                headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
+                headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
             )
             with urllib.request.urlopen(req, timeout=10) as response:
                 return feedparser.parse(response.read())
@@ -75,7 +75,7 @@ def get_news_headlines(company_name: str, max_items: int = 5) -> list:
         # 3. Secure secondary fallback layer if broad term returns empty dataset rows
         if not headlines:
             logger.warning(f"Secondary try fallback executed for stock term: {query_term} stock")
-            fallback_url = f"https://google.com{urllib.parse.quote(query_term + ' stock')}&hl=en-US&gl=US&ceid=US:en"
+            fallback_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query_term + ' stock')}&hl=en-US&gl=US&ceid=US:en"
             feed = fetch_feed_safely(fallback_url)
             headlines = parse_entries(feed.entries) if feed else []
             
