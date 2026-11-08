@@ -1,12 +1,11 @@
 import os
-import smtplib
-import time
+import base64
+import resend
 from weasyprint import HTML
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
-from email.encoders import encode_base64
 
+# =====================================================================
+# MODULE A: PDF LAYOUT RENDER ENGINE
+# =====================================================================
 def generate_dashboard_pdf(ticker, company, current_p, predicted_p, bound_low, bound_high, sentiment_lbl, sentiment_scr, summary_text, headlines, scores_map=None, chart_base64=None, output_path="world_x_market_snapshot.pdf"):
     """
     Exclusively compiles live price points, memory chart graphics, and cross-references
@@ -121,37 +120,40 @@ def generate_dashboard_pdf(ticker, company, current_p, predicted_p, bound_low, b
     HTML(string=html_content).write_pdf(output_path)
     return output_path
 
-import base64
-import resend
-
-def send_bulk_report_emails(api_key, recipient_input, subject, body, attachment_path=None):
+# =====================================================================
+# MODULE B: WEB API DISPATCH LOOPS (BYPASSES SMTP FIREWALLS)
+# =====================================================================
+def send_bulk_report_emails(api_key, recipient_input, subject, body, attachment_path):
     """
-    Dispatches outbound mail by executing standard HTTPS requests 
-    via the Resend API client layer, completely bypassing cloud port blocks.
+    Dispatches automated emails by converting compiled documents into safe 
+    Base64 payloads and posting via secure web protocol client networks.
     """
     resend.api_key = api_key
     recipient_list = [email.strip() for email in recipient_input.split(",") if email.strip()]
     if not recipient_list:
         raise ValueError("Please provide at least one valid recipient address destination.")
 
+    if not os.path.exists(attachment_path):
+        raise FileNotFoundError(f"Attachment missing at: {attachment_path}")
+
+    # Encode raw report bytes to text-safe format
+    with open(attachment_path, "rb") as pdf_file:
+        encoded_pdf = base64.b64encode(pdf_file.read()).decode("utf-8")
+
+    # Construct clean parameters payload dictionary
     params = {
-        "from": "WORLD-X Reports <onboarding@resend.dev>",
+        "from": "WORLD-X Predictor <onboarding@resend.dev>", # Adjust once domain is linked
         "to": recipient_list,
         "subject": subject,
         "text": body,
-    }
-
-    # Encode and attach the compiled PDF out of memory if it exists
-    if attachment_path and os.path.exists(attachment_path):
-        with open(attachment_path, "rb") as pdf_file:
-            encoded_pdf = base64.b64encode(pdf_file.read()).decode("utf-8")
-        params["attachments"] = [
+        "attachments": [
             {
                 "filename": os.path.basename(attachment_path),
                 "content": encoded_pdf
             }
         ]
+    }
 
-    # Fires an API call over port 443 (standard web traffic), unblockable by the firewall
+    # Transmit via standard HTTPS API over Port 443
     resend.Emails.send(params)
     return len(recipient_list)
