@@ -121,30 +121,37 @@ def generate_dashboard_pdf(ticker, company, current_p, predicted_p, bound_low, b
     HTML(string=html_content).write_pdf(output_path)
     return output_path
 
-def send_bulk_report_emails(email_sender, app_password, recipient_input, subject, body, attachment_path=None):
+import base64
+import resend
+
+def send_bulk_report_emails(api_key, recipient_input, subject, body, attachment_path=None):
+    """
+    Dispatches outbound mail by executing standard HTTPS requests 
+    via the Resend API client layer, completely bypassing cloud port blocks.
+    """
+    resend.api_key = api_key
     recipient_list = [email.strip() for email in recipient_input.split(",") if email.strip()]
     if not recipient_list:
         raise ValueError("Please provide at least one valid recipient address destination.")
-    server = smtplib.SMTP('://gmail.com', 587)
-    server.starttls()
-    server.login(email_sender, app_password)
-    try:
-        for receiver in recipient_list:
-            msg = MIMEMultipart()
-            msg['From'] = email_sender
-            msg['To'] = receiver
-            msg['Subject'] = subject
-            msg.attach(MIMEText(body, 'plain'))
-            if attachment_path and os.path.exists(attachment_path):
-                with open(attachment_path, "rb") as attachment:
-                    part = MIMEBase("application", "octet-stream")
-                    part.set_payload(attachment.read())
-                    encode_base64(part)
-                    part.add_header("Content-Disposition", f"attachment; filename={os.path.basename(attachment_path)}")
-                    msg.attach(part)
-            server.sendmail(email_sender, receiver, msg.as_string())
-            if len(recipient_list) > 1:
-                time.sleep(1)
-    finally:
-        server.quit()
+
+    params = {
+        "from": "WORLD-X Reports <onboarding@resend.dev>",
+        "to": recipient_list,
+        "subject": subject,
+        "text": body,
+    }
+
+    # Encode and attach the compiled PDF out of memory if it exists
+    if attachment_path and os.path.exists(attachment_path):
+        with open(attachment_path, "rb") as pdf_file:
+            encoded_pdf = base64.b64encode(pdf_file.read()).decode("utf-8")
+        params["attachments"] = [
+            {
+                "filename": os.path.basename(attachment_path),
+                "content": encoded_pdf
+            }
+        ]
+
+    # Fires an API call over port 443 (standard web traffic), unblockable by the firewall
+    resend.Emails.send(params)
     return len(recipient_list)
