@@ -285,7 +285,7 @@ if predict_button and valid_ticker:
     except Exception as e:
         st.error(f"❌ Execution error: {e}")
 
-# --- FIXED ENGINE BYPASS LAYOUT: GENERATES CHART EXPORTS VIA MATPLOTLIB TO BYPASS CHROME ---
+# --- FIXED ENGINE BYPASS LAYOUT: GENERATES CHART EXPORTS VIA MATPLOTLIB WITH CORRECT COLOR ENCODING ---
 if st.session_state.last_report_data:
     pdf_filename = "world_x_market_snapshot.pdf"
     chart_filename = "temp_chart_snapshot.png"
@@ -311,8 +311,8 @@ if st.session_state.last_report_data:
         # C. Shaded Confidence Range Intervals
         ax.fill_between(forecast['ds'], forecast['yhat_lower'], forecast['yhat_upper'], color='#ff7f0e', alpha=0.15, label='Confidence Range')
         
-        # D. Add vertical reference flag for "Today" Axis
-        ax.axvline(x=df['ds'].iloc[-1], color='rgba(255,255,255,0.4)', linestyle=':', linewidth=1.5)
+        # D. FIXED: Add vertical reference flag using a valid Matplotlib hex alpha string format ('#ffffff66')
+        ax.axvline(x=df['ds'].iloc[-1], color='#ffffff66', linestyle=':', linewidth=1.5)
         
         # Spacing adjustments and labels formatting strings
         ax.set_title(f"Technical Projection Matrix: {data['ticker']}", fontsize=11, color='#FFFFFF', pad=10, weight='bold')
@@ -389,7 +389,9 @@ if st.sidebar.button("📬 Send Email Report"):
             ax.plot(df['ds'], df['y'], color='#1f77b4', linewidth=2)
             ax.plot(forecast['ds'], forecast['yhat'], color='#ff7f0e', linestyle='--', linewidth=2)
             ax.fill_between(forecast['ds'], forecast['yhat_lower'], forecast['yhat_upper'], color='#ff7f0e', alpha=0.15)
-            ax.axvline(x=df['ds'].iloc[-1], color='rgba(255,255,255,0.4)', linestyle=':', linewidth=1.5)
+            
+            # FIXED: Updated email generator segment color layout to use valid hex encoding
+            ax.axvline(x=df['ds'].iloc[-1], color='#ffffff66', linestyle=':', linewidth=1.5)
             
             ax.set_title(f"Technical Projection Matrix: {data['ticker']}", fontsize=11, color='#FFFFFF', pad=10, weight='bold')
             ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
