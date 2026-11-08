@@ -20,7 +20,7 @@ def test_get_news_headlines_success(mock_urlopen, mock_feed_parse):
         'title': 'Bitcoin Hits Record High Parameters'
     }.get(key, default)
     
-    # Simulate a structural time tuple matching RSS publication specs (Nov 07, 2026 context)
+    # Simulate a structural time tuple matching RSS publication specs
     mock_entry.published_parsed = (2026, 11, 7, 12, 0, 0, 5, 311, 0)
     
     mock_feed_instance = MagicMock()
@@ -37,8 +37,9 @@ def test_get_news_headlines_success(mock_urlopen, mock_feed_parse):
     
     # Verify proper asset extension cleaning string logic applied matching news_scraper components
     mock_urlopen.assert_called_once()
-    called_req = mock_urlopen.call_args[0][0]
-    assert "BTC" in called_req.full_url  # Suffix "-USD" successfully stripped away into a clean string
+    called_args = mock_urlopen.call_args[0][0]  # Grab the Request object
+    # Verify the query string is extracted as a string element (BTC) instead of a list object
+    assert "BTC" in called_args.full_url
 
 
 @patch('src.utils.news_scraper.feedparser.parse')
