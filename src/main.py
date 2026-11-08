@@ -19,8 +19,8 @@ from utils.news_scraper import get_news_headlines
 from services.forecasting_engine import make_forecast
 from services.llm_orchestrator import analyze_and_summarize_news
 
-# Import modular background reporting utility
-from utils.report_utils import generate_dashboard_pdf
+# Import modular background reporting utilities
+from utils.report_utils import generate_dashboard_pdf, send_bulk_report_emails
 
 st.set_page_config(page_title="📈 Stock Predictor", layout="wide")
 
@@ -62,7 +62,7 @@ timeframe = st.sidebar.selectbox(
     ['1 day', '1 week', '1 month', '3 months', '6 months', '1 year', '2 year']
 )
 
-# --- FIXED NEWS BYPASS LOGIC: Renders news feed even if Groq secret tokens are missing ---
+# --- NEWS BYPASS LOGIC ---
 show_news = st.sidebar.checkbox("Show News Feed Layout", value=True)
 has_groq = "GROQ_API_KEY" in st.secrets and bool(st.secrets["GROQ_API_KEY"])
 
@@ -70,6 +70,13 @@ if not has_groq:
     st.sidebar.warning("💡 AI Summary deactivated (Missing GROQ_API_KEY). Showing raw news layout text only.")
 
 predict_button = st.sidebar.button("🔮 Predict Price")
+
+# --- EMAIL DISPATCH PANEL FIELDS (ALWAYS VISIBLE) ---
+st.sidebar.markdown("---")
+st.sidebar.subheader("✉️ Automated PDF Dispatch")
+email_receiver_input = st.sidebar.text_input('Recipient Email(s) (separate with commas)')
+mail_subject = st.sidebar.text_input('Mail Subject', value="WORLD-X Market Analytics Report")
+mail_body = st.sidebar.text_area('Mail Body', value="Please review the attached multi-asset analytics target document compiled from your dashboard.")
 
 # Initialize dynamic reporting memory cache
 if "last_report_data" not in st.session_state:
@@ -83,10 +90,9 @@ if predict_button and valid_ticker:
         
         # 1️⃣ STEP 1: Pre-fetch Headlines & Execute Groq AI Sentiment Extraction First
         headlines = get_news_headlines(selected_ticker)
-        sentiment_score = 0.0  # Baseline fallback default parameter
+        sentiment_score = 0.0  
         market_payload = {}
         
-        # FIXED: Initialize fallback values to completely block runtime execution scope crashes
         label = "Neutral Status"
         summary_text = "AI summary generation bypassed or no headlines found."
         scores_map = {}
@@ -106,9 +112,9 @@ if predict_button and valid_ticker:
                     summary_text = market_payload.get("summary", "No analytical content found.")
             else:
                 label = "Neutral Status"
-                summary_text = "AI summary generation bypassed. Please configure GROQ_API_KEY token settings inside your project configuration."
+                summary_text = "AI summary generation bypassed. Please configure GROQ_API_KEY token settings."
 
-        # 2️⃣ STEP 2: Feed the Live Sentiment Modifier Score straight into Prophet Mathematical Pipeline
+        # 2️⃣ STEP 2: Feed the Live Sentiment Modifier Score straight into Prophet Pipeline
         forecast, df, currency, predicted, lower, upper = make_forecast(
             ticker=selected_ticker, 
             timeframe=timeframe, 
@@ -120,7 +126,7 @@ if predict_button and valid_ticker:
         delta = current_price - previous_price
         pct = (delta / previous_price) * 100 if previous_price != 0 else 0
         
-        # Cache the calculation datasets into session memory layer array mappings
+        # Cache datasets into session memory layer
         st.session_state.last_report_data = {
             "ticker": selected_ticker,
             "company": company,
@@ -153,7 +159,6 @@ if predict_button and valid_ticker:
         # 📊 Interactive Hover Plotly Chart Generation
         fig = go.Figure()
 
-        # A. Historical Closing Prices Line Trace
         fig.add_trace(go.Scatter(
             x=df['ds'], 
             y=df['y'], 
@@ -162,7 +167,6 @@ if predict_button and valid_ticker:
             hovertemplate=f"Price: {currency}%{{y:,.2f}}<extra></extra>"
         ))
 
-        # B. Prophet Center Forecast Line Trace
         fig.add_trace(go.Scatter(
             x=forecast['ds'], 
             y=forecast['yhat'], 
@@ -175,15 +179,9 @@ if predict_button and valid_ticker:
         upper_list = [float(x) for x in forecast['yhat_upper']]
         lower_list = [float(x) for x in forecast['yhat_lower']]
 
-        # C. Sentiment-Adjusted Confidence Bound Bounds (Shaded Area Traces)
         fig.add_trace(go.Scatter(
-            x=forecast_ds, 
-            y=upper_list, 
-            line=dict(width=0), 
-            showlegend=False, 
-            hoverinfo='skip'
+            x=forecast_ds, y=upper_list, line=dict(width=0), showlegend=False, hoverinfo='skip'
         ))
-        
         fig.add_trace(go.Scatter(
             x=forecast_ds, 
             y=lower_list, 
@@ -269,7 +267,6 @@ if predict_button and valid_ticker:
             st.markdown("### 📝 Investor Executive Summary")
             st.write(summary_text)
             
-            # Cache the compiled scores map array values
             st.session_state.last_report_data["scores_map"] = scores_map
             
         elif show_news and not headlines:
@@ -280,10 +277,11 @@ if predict_button and valid_ticker:
         st.error(f"❌ Execution error: {e}")
 
 # =====================================================================
-# CLEAN EXPORT ENGINE: COMPILES WHITE-THEME EXECUTIVE REPORT NATIVELY
+# FIXED UNIFIED ENGINE: RE-PREPARES ASSETS DYNAMICALLY WITHOUT CRASHES
 # =====================================================================
 if st.session_state.last_report_data:
     pdf_filename = "world_x_market_snapshot.pdf"
+    chart_filename = "temp_chart_snapshot.png"
     data = st.session_state.last_report_data
     
     try:
@@ -296,7 +294,7 @@ if st.session_state.last_report_data:
         import io
         import base64
         
-        # 1️⃣ Generate clean Matplotlib layout chart
+        # Render static graph out of cached layout arrays
         plt.rcdefaults() 
         fig_pdf, ax = plt.subplots(figsize=(8, 3.5), dpi=200)
         fig_pdf.patch.set_facecolor('#ffffff')
@@ -316,14 +314,13 @@ if st.session_state.last_report_data:
             
         plt.tight_layout()
         
-        # Save image directly via virtual RAM bytes memory streams (Cloud Firewall Bypass)
         buf = io.BytesIO()
         plt.savefig(buf, format='png', facecolor=fig_pdf.get_facecolor(), edgecolor='none', bbox_inches='tight')
         buf.seek(0)
         chart_base64_str = base64.b64encode(buf.read()).decode('utf-8')
         plt.close(fig_pdf)
         
-        # Compile PDF report passing the white print assets out of memory
+        # Build the PDF file path
         generate_dashboard_pdf(
             ticker=data["ticker"], company=data["company"], current_p=data["current_p"],
             predicted_p=data["predicted_p"], bound_low=data["bound_low"], bound_high=data["bound_high"],
@@ -335,7 +332,7 @@ if st.session_state.last_report_data:
         with open(pdf_filename, "rb") as f:
             pdf_bytes = f.read()
             
-        # 2️⃣ Render the Clean Print-Ready Download Trigger on the sidebar
+        # Display clean download button
         st.sidebar.markdown("---")
         st.sidebar.subheader("📥 Export Options")
         st.sidebar.download_button(
@@ -345,7 +342,32 @@ if st.session_state.last_report_data:
             mime="application/pdf",
             use_container_width=True
         )
+        
+        # --- FIXED EMAIL FORM ACTION SWITCH BUTTON ---
+        if st.sidebar.button("📬 Send Email Report", use_container_width=True):
+            if not email_receiver_input:
+                st.sidebar.error("Please enter at least one recipient email address.")
+            else:
+                try:
+                    # Pull values straight from your standard secrets configuration
+                    email_sender = st.secrets["gmail"]["username"]
+                    app_password = st.secrets["gmail"]["app_password"]
+                except KeyError:
+                    st.sidebar.error("Missing credentials! Verify configuration inside `.streamlit/secrets.toml`.")
+                    st.stop()
+                
+                try:
+                    # Executes using your exact custom SMTP loop function natively
+                    total_sent = send_bulk_report_emails(
+                        email_sender=email_sender, app_password=app_password,
+                        recipient_input=email_receiver_input, subject=mail_subject,
+                        body=mail_body, attachment_path=pdf_filename
+                    )
+                    st.sidebar.success(f"Email(s) sent successfully to {total_sent} recipient(s)! 🚀")
+                except Exception as mail_err:
+                    st.sidebar.error(f"Erreur lors de l’envoi de l’e-mail : {mail_err}")
 
+        # Clean local temporary file space allocations safely
         if os.path.exists(pdf_filename):
             os.remove(pdf_filename)
             
