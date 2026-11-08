@@ -285,20 +285,48 @@ if predict_button and valid_ticker:
     except Exception as e:
         st.error(f"❌ Execution error: {e}")
 
-# --- FIXED ENGINE BYPASS LAYOUT: GENERATES CHART EXPORTS WITHOUT CHROME DEPENDENCIES ---
+# --- FIXED ENGINE BYPASS LAYOUT: GENERATES CHART EXPORTS VIA MATPLOTLIB TO BYPASS CHROME ---
 if st.session_state.last_report_data:
     pdf_filename = "world_x_market_snapshot.pdf"
     chart_filename = "temp_chart_snapshot.png"
     data = st.session_state.last_report_data
     
     try:
-        # Standardize chart aesthetic design constraints across theme blocks
-        fig.update_layout(template="plotly_dark", paper_bgcolor="#1e293b", plot_bgcolor="#1e293b")
+        # Generate a clean, dark-themed static chart image using native matplotlib
+        import matplotlib.pyplot as plt
+        import matplotlib.dates as mdates
         
-        # FIXED ENGINE FLAGS: Use raw byte string serialization via orjson to bypass kaleido browser errors
-        img_bytes = fig.to_image(format="png", width=800, height=350, scale=2)
-        with open(chart_filename, "wb") as f_img:
-            f_img.write(img_bytes)
+        # Initialize dark dashboard theme parameters
+        plt.style.use('dark_background')
+        fig_pdf, ax = plt.subplots(figsize=(8, 3.5), dpi=200)
+        fig_pdf.patch.set_facecolor('#1e293b')
+        ax.set_facecolor('#1e293b')
+        
+        # A. Plot Historical Close Data
+        ax.plot(df['ds'], df['y'], color='#1f77b4', label='Historical Close', linewidth=2)
+        
+        # B. Plot Forecast Target Core
+        ax.plot(forecast['ds'], forecast['yhat'], color='#ff7f0e', linestyle='--', label='AI Target Forecast', linewidth=2)
+        
+        # C. Shaded Confidence Range Intervals
+        ax.fill_between(forecast['ds'], forecast['yhat_lower'], forecast['yhat_upper'], color='#ff7f0e', alpha=0.15, label='Confidence Range')
+        
+        # D. Add vertical reference flag for "Today" Axis
+        ax.axvline(x=df['ds'].iloc[-1], color='rgba(255,255,255,0.4)', linestyle=':', linewidth=1.5)
+        
+        # Spacing adjustments and labels formatting strings
+        ax.set_title(f"Technical Projection Matrix: {data['ticker']}", fontsize=11, color='#FFFFFF', pad=10, weight='bold')
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
+        ax.tick_params(colors='#94a3b8', labelsize=8)
+        ax.grid(True, color='#2d3748', linestyle=':', alpha=0.5)
+        
+        # Clean boundary lines cleanups
+        for spine in ax.spines.values():
+            spine.set_color('#334155')
+            
+        plt.tight_layout()
+        plt.savefig(chart_filename, facecolor=fig_pdf.get_facecolor(), edgecolor='none', bbox_inches='tight')
+        plt.close(fig_pdf)
         
         # Pre-compile the high-resolution PDF snapshot passing chart image file targets
         generate_dashboard_pdf(
@@ -323,7 +351,7 @@ if st.session_state.last_report_data:
             use_container_width=True
         )
         
-        # Clear temporary file allocations safely from the instance
+        # Clear temporary file allocations safely from the server instance workspace
         for temp_file in [pdf_filename, chart_filename]:
             if os.path.exists(temp_file):
                 os.remove(temp_file)
@@ -350,11 +378,29 @@ if st.sidebar.button("📬 Send Email Report"):
             chart_filename = "temp_chart_snapshot.png"
             data = st.session_state.last_report_data
             
-            # Re-generate graph image bytes context for the mail attachment engine
-            fig.update_layout(template="plotly_dark", paper_bgcolor="#1e293b", plot_bgcolor="#1e293b")
-            img_bytes = fig.to_image(format="png", width=800, height=350, scale=2)
-            with open(chart_filename, "wb") as f_img:
-                f_img.write(img_bytes)
+            # Re-generate graph image context via matplotlib fallback routing loop
+            import matplotlib.pyplot as plt
+            import matplotlib.dates as mdates
+            plt.style.use('dark_background')
+            fig_pdf, ax = plt.subplots(figsize=(8, 3.5), dpi=200)
+            fig_pdf.patch.set_facecolor('#1e293b')
+            ax.set_facecolor('#1e293b')
+            
+            ax.plot(df['ds'], df['y'], color='#1f77b4', linewidth=2)
+            ax.plot(forecast['ds'], forecast['yhat'], color='#ff7f0e', linestyle='--', linewidth=2)
+            ax.fill_between(forecast['ds'], forecast['yhat_lower'], forecast['yhat_upper'], color='#ff7f0e', alpha=0.15)
+            ax.axvline(x=df['ds'].iloc[-1], color='rgba(255,255,255,0.4)', linestyle=':', linewidth=1.5)
+            
+            ax.set_title(f"Technical Projection Matrix: {data['ticker']}", fontsize=11, color='#FFFFFF', pad=10, weight='bold')
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
+            ax.tick_params(colors='#94a3b8', labelsize=8)
+            ax.grid(True, color='#2d3748', linestyle=':', alpha=0.5)
+            for spine in ax.spines.values():
+                spine.set_color('#334155')
+                
+            plt.tight_layout()
+            plt.savefig(chart_filename, facecolor=fig_pdf.get_facecolor(), edgecolor='none', bbox_inches='tight')
+            plt.close(fig_pdf)
             
             generate_dashboard_pdf(
                 ticker=data["ticker"], company=data["company"], current_p=data["current_p"],
