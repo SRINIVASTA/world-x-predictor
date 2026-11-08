@@ -8,7 +8,7 @@ from email.mime.base import MIMEBase
 from email.encoders import encode_base64
 
 # =====================================================================
-# MODULE A: ISOLATED PDF LAYOUT RENDER ENGINE WITH GOOGLE RSS LOOPS
+# MODULE A: ISOLATED PDF LAYOUT RENDER ENGINE
 # =====================================================================
 def generate_dashboard_pdf(ticker, company, current_p, predicted_p, bound_low, bound_high, sentiment_lbl, sentiment_scr, summary_text, headlines, output_path="world_x_market_snapshot.pdf"):
     """
@@ -17,11 +17,9 @@ def generate_dashboard_pdf(ticker, company, current_p, predicted_p, bound_low, b
     """
     ui_color = "#10b981" if sentiment_scr >= 0.25 else "#ef4444" if sentiment_scr <= -0.25 else "#f59e0b"
     
-    # Generate structural HTML matching your news_scraper.py output mapping {"title", "date"}
     news_rows_html = ""
     if headlines:
         for h in headlines:
-            # Safely verify dictionary attributes from feedparser processing models
             h_title = h.get("title", "") if isinstance(h, dict) else str(h)
             h_date = h.get("date", "Recent") if isinstance(h, dict) else "Recent"
             
@@ -61,11 +59,7 @@ def generate_dashboard_pdf(ticker, company, current_p, predicted_p, bound_low, b
                 padding: 0;
                 font-size: 10pt;
             }}
-            header {{
-                border-bottom: 2px solid #3b82f6;
-                padding-bottom: 15px;
-                margin-bottom: 20px;
-            }}
+            header {{ border-bottom: 2px solid #3b82f6; padding-bottom: 15px; margin-bottom: 20px; }}
             .header-title {{ font-size: 22pt; font-weight: 800; color: #3b82f6; margin: 0; }}
             .header-subtitle {{ font-size: 11pt; color: #94a3b8; margin: 5px 0 0 0; }}
             .market-grid {{ display: table; width: 100%; margin-bottom: 25px; border-collapse: separate; border-spacing: 8px; break-inside: avoid; }}
@@ -85,7 +79,6 @@ def generate_dashboard_pdf(ticker, company, current_p, predicted_p, bound_low, b
             <h1 class="header-title">📈 WORLD-X: Multi-Asset Price Predictor</h1>
             <p class="header-subtitle">Stocks | Crypto | Forex ₹ | Metals | Crude Oil — Global Prediction Matrix</p>
         </header>
-
         <div class="section-title">📊 Active Market Target: {ticker} ({company})</div>
         <div class="market-grid">
             <div class="market-row">
@@ -94,28 +87,18 @@ def generate_dashboard_pdf(ticker, company, current_p, predicted_p, bound_low, b
                 <div class="market-card"><div class="card-name">Confidence Range Bounds</div><div class="card-price" style="font-size: 10pt; padding-top: 4px;">{bound_low} — {bound_high}</div></div>
             </div>
         </div>
-
         <div class="section-title">📰 AI Sentiment Matrix Analytics</div>
         <div class="sentiment-box">
             <div class="card-name">Sentiment Distribution Label</div>
             <div style="font-size: 18pt; font-weight: 700; color: #fff; margin: 4px 0;">{sentiment_lbl}</div>
             <div style="font-size: 11pt; color: {ui_color}; font-weight: 600;">Composite Score: {sentiment_scr:+.2f}</div>
         </div>
-
         <div class="section-title">📝 Executive Summary Insights</div>
         <div class="summary-box">{summary_text}</div>
-
         <div class="section-title">🌍 Live Google RSS News Ingest Feed</div>
         <table class="news-table">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Scraped Market Article Title</th>
-                </tr>
-            </thead>
-            <tbody>
-                {news_rows_html}
-            </tbody>
+            <thead><tr><th>Date</th><th>Scraped Market Article Title</th></tr></thead>
+            <tbody>{news_rows_html}</tbody>
         </table>
     </body>
     </html>
@@ -123,18 +106,21 @@ def generate_dashboard_pdf(ticker, company, current_p, predicted_p, bound_low, b
     HTML(string=html_content).write_pdf(output_path)
     return output_path
 
+
+# =====================================================================
+# MODULE B: ISOLATED BULK EMAIL TRANSPORT LOOP (UPDATED TO SECURE SSL)
+# =====================================================================
 def send_bulk_report_emails(email_sender, app_password, recipient_input, subject, body, attachment_path=None):
     """
     Exclusively parses raw strings, addresses clean list configurations, and loops 
-    individual message objects via secure SMTP layers to prevent header leakage.
+    individual message objects via secure immediate SSL (Port 465) to bypass cloud firewalls.
     """
     recipient_list = [email.strip() for email in recipient_input.split(",") if email.strip()]
     if not recipient_list:
         raise ValueError("Please provide at least one valid recipient address destination.")
 
-    # FIXED: Replaced invalid or broken pointers with the official server endpoint
-    server = smtplib.SMTP('://gmail.com', 587)
-    server.starttls()
+    # Using SMTP_SSL on Port 465 to match your working baseline configuration
+    server = smtplib.SMTP_SSL('://gmail.com', 465)
     server.login(email_sender, app_password)
 
     try:
