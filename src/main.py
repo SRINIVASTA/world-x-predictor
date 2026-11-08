@@ -71,7 +71,7 @@ if not has_groq:
 
 predict_button = st.sidebar.button("🔮 Predict Price")
 
-# --- FIXED: ALWAYS VISIBLE SIDEBAR DISPATCH FORM ---
+# --- INTEGRATED SIDEBAR DISPATCH FORM (ALWAYS VISIBLE) ---
 st.sidebar.markdown("---")
 st.sidebar.subheader("✉️ Automated PDF Dispatch")
 email_receiver_input = st.sidebar.text_input('Recipient Email(s) (separate with commas)')
@@ -93,6 +93,133 @@ if predict_button and valid_ticker:
         sentiment_score = 0.0  # Baseline fallback default parameter
         market_payload = {}
         
+        # FIXED: Initialize fallback values to completely block runtime execution scope crashes
+        label = "Neutral Status"
+        summary_text = "AI summary generation bypassed or no headlines found."
+        scores_map = {}
+        
+        if show_news and headlines:
+            raw_headlines_strings = [h.get("title", "") if isinstance(h, dict) else str(h) for h in headlines]
+            
+            if has_groq:
+                with st.spinner("Processing Groq AI Sentiment Matrices..."):
+                    market_payload = analyze_and_summarize_news(
+                        ticker=selected_ticker, 
+                        asset_class="Multi-Asset", 
+                        headlines=raw_headlines_strings
+                    )
+                    sentiment_score = market_payload.get("composite_score", 0.0)
+                    label = market_payload.get("label", "Neutral")
+                    summary_text = market_payload.get("summary", "No analytical content found.")
+            else:
+                label = "Neutral Status"
+                summary_text = "AI summary generation bypassed. Please configure GROQ_API_KEY token settings inside your project configuration."
+
+        # 2️⃣ STEP 2: Feed the Live Sentiment Modifier Score straight into Prophet Mathematical Pipeline
+        forecast, df, currency, predicted, lower, upper = make_forecast(
+            ticker=selected_ticker, 
+            timeframe=timeframe, 
+            sentiment_score=sentiment_score
+        )
+
+        current_price = df['y'].iloc[-1]
+        previous_price = df['y'].iloc[-2] if len(df) > 1 else current_price
+        delta = current_price - previous_price
+        pct = (delta / previous_price) * 100 if previous_price != 0 else 0
+        
+        # Cache the calculation datasets into session memory layer array mappings
+        st.session_state.last_report_data = {
+            "ticker": selected_ticker,
+            "company": company,
+            "current_p": f"{currency}{current_price:,.2f}",
+            "predicted_p": f"{currency}{predicted:,.2f}",
+            "bound_low": f"{currency}{lower:,.2f}",
+            "bound_high": f"{currency}{upper:,.2f}",
+            "sentiment_lbl": label,
+            "sentiment_scr": sentiment_score,
+            "summary_text": summary_text,
+            "headlines": headlines,
+            "scores_map": scores_map,
+            "df": df,              
+            "forecast": forecast   
+        }
+
+        # 3️⃣ STEP 3: Render Primary Visual Layouts
+        st.subheader(f"{selected_ticker} ({company})")
+        st.write(f"Exchange: `{exchange}`")
+
+        st.metric("Current Price", f"{currency}{current_price:,.2f}", f"{delta:+.2f} ({pct:+.2f}%)")
+        st.success(f"📊 Predicted Target: {currency}{predicted:,.2f}")
+        st.caption(f"Confidence Bound Range (Sentiment-Adjusted): {currency}{lower:,.2f} — {currency}{upper:,.2f}")
+
+        trend = get_recent_trend(df)
+        if trend:
+            emoji = "📈" if trend == "positive momentum" else "📉"
+            st.info(f"Recent **past trend**: {trend} {emoji}")
+
+        # 📊 Interactive Hover Plotly Chart Generation
+        fig = go.Figure()
+
+        fig.add_trace(go.Scatter(
+            x=df['ds'], 
+            y=df['y'], 
+            name="Historical Close",
+            line=dict(color="#1f77b4", width=2.5),
+            hovertemplate=f"Price: {currency}%{{y:,.2f}}<extra></extra>"
+        ))
+
+        fig.add_trace(go.Scatter(
+            x=forecast['ds'], 
+            y=forecast['yhat'], 
+            name="AI Target Forecast",
+            line=dict(color="#ff7f0e", width=2.5, dash="dash"),
+            hovertemplate=f"Predicted: {currency}%{{y:,.2f}}<extra></extra>"
+        ))
+
+        forecast_ds = forecast['ds'].tolist()
+        upper_list = [float(x) for x in forecast['yhat_upper']]
+        lower_list = [float(x) for x in forecast['yhat_lower']]
+
+        fig.add_trace(go.Scatter(
+            x=forecast_ds, 
+            y=upper_list, 
+            line=dict(width=0), 
+            showlegend=False, 
+            hoverinfo='skip'
+        ))
+        
+        fig.add_trace(go.Scatter(
+            x=forecast_ds, 
+            y=lower_list, 
+            fill='tonexty', 
+            fillcolor='rgba(255, 127, 14, 0.12)', 
+            line=dict(width=0), 
+            name="Confidence Range",
+            hovertemplate=f"Max Range: {currency}%{{customdata:,.2f}}<br>Min Range: {currency}%{{customdata:,.2f}}<extra></extra>",
+            customdata=list(zip(lower_list, upper_list))
+        ))
+
+        fig.add_shape(
+            type="line",
+            x0=df['ds'].iloc[-1], y0=float(df['y'].min()) * 0.9,
+            x1=df['ds'].iloc[-1], y1=max(upper_list) * 1.1,
+            line=dict(color="rgba(255,255,255,0.4)", width=1.5, dash="dot"),
+        )
+
+        fig.update_layout(
+            title=dict(text=f"Interactive Technical Projection Matrix: {selected_ticker}", font=dict(size=16, color="#FFF")),
+            xaxis_title="Timeline",
+            yaxis_title=f"Asset Valuation Value ({currency})",
+            hovermode="x unified",  
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            margin=dict(l=10, r=10, t=45, b=10),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            xaxis=dict(showgrid=True, gridcolor="#2D2D2D"),
+            yaxis=dict(showgrid=True, gridcolor="#2D2D2D", tickformat=",.2f")
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
         # 4️⃣ STEP 4: Render News Score Breakdown and Summaries Block
         if show_news and headlines:
             st.markdown("---")
@@ -120,7 +247,6 @@ if predict_button and valid_ticker:
                 st.subheader("Recent Headlines & Score Breakdown:")
                 
                 breakdown_list = market_payload.get("breakdown", [])
-                scores_map = {}
                 for item in breakdown_list:
                     scores_map[item.get("headline", "").lower().strip()] = item.get("score", 0.0)
                 
@@ -147,22 +273,8 @@ if predict_button and valid_ticker:
             st.markdown("### 📝 Investor Executive Summary")
             st.write(summary_text)
             
-            # FIXED: Cache the compiled scores dictionary into session memory alongside other metrics
-            st.session_state.last_report_data = {
-                "ticker": selected_ticker,
-                "company": company,
-                "current_p": f"{currency}{current_price:,.2f}",
-                "predicted_p": f"{currency}{predicted:,.2f}",
-                "bound_low": f"{currency}{lower:,.2f}",
-                "bound_high": f"{currency}{upper:,.2f}",
-                "sentiment_lbl": label,
-                "sentiment_scr": sentiment_score,
-                "summary_text": summary_text,
-                "headlines": headlines,
-                "scores_map": scores_map, # Cached for the light theme PDF generation
-                "df": df,              
-                "forecast": forecast   
-            }
+            # Update active cached storage payload array records securely
+            st.session_state.last_report_data["scores_map"] = scores_map
             
         elif show_news and not headlines:
             st.markdown("---")
@@ -207,13 +319,14 @@ if st.session_state.last_report_data:
             
         plt.tight_layout()
         
+        # Save structural image data streams cleanly via internal RAM buffer allocations
         buf = io.BytesIO()
         plt.savefig(buf, format='png', facecolor=fig_pdf.get_facecolor(), edgecolor='none', bbox_inches='tight')
         buf.seek(0)
         chart_base64_str = base64.b64encode(buf.read()).decode('utf-8')
         plt.close(fig_pdf)
         
-        # FIXED: Pass the cached scores map dictionary straight to the layout engine
+        # Compile print-ready white report containing inline chart streams and AI scores map
         generate_dashboard_pdf(
             ticker=data["ticker"], company=data["company"], current_p=data["current_p"],
             predicted_p=data["predicted_p"], bound_low=data["bound_low"], bound_high=data["bound_high"],
