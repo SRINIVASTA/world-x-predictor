@@ -287,24 +287,24 @@ if predict_button and valid_ticker:
     except Exception as e:
         st.error(f"❌ Execution error: {e}")
 
-# --- FIXED ENGINE BYPASS LAYOUT: GENERATES CHART EXPORTS VIA MATPLOTLIB USING CACHED MEMORY ARRAYS ---
+# --- FIXED ENGINE BYPASS LAYOUT: GENERATES CHART EXPORTS VIA MATPLOTLIB IN NORMAL LIGHT THEME ---
 if st.session_state.last_report_data:
     pdf_filename = "world_x_market_snapshot.pdf"
     chart_filename = "temp_chart_snapshot.png"
     data = st.session_state.last_report_data
     
     try:
-        # FIXED: Extract data frames safely from dynamic session memory arrays
         df_cached = data["df"]
         forecast_cached = data["forecast"]
         
         import matplotlib.pyplot as plt
         import matplotlib.dates as mdates
         
-        plt.style.use('dark_background')
+        # FIXED: Configured light theme parameters for normal print output formats
+        plt.rcdefaults() 
         fig_pdf, ax = plt.subplots(figsize=(8, 3.5), dpi=200)
-        fig_pdf.patch.set_facecolor('#1e293b')
-        ax.set_facecolor('#1e293b')
+        fig_pdf.patch.set_facecolor('#ffffff')
+        ax.set_facecolor('#f8fafc')
         
         # A. Plot Historical Close Data
         ax.plot(df_cached['ds'], df_cached['y'], color='#1f77b4', label='Historical Close', linewidth=2)
@@ -315,17 +315,17 @@ if st.session_state.last_report_data:
         # C. Shaded Confidence Range Intervals
         ax.fill_between(forecast_cached['ds'], forecast_cached['yhat_lower'], forecast_cached['yhat_upper'], color='#ff7f0e', alpha=0.15, label='Confidence Range')
         
-        # D. Add vertical reference flag using a valid Matplotlib hex alpha string format
-        ax.axvline(x=df_cached['ds'].iloc[-1], color='#ffffff66', linestyle=':', linewidth=1.5)
+        # D. Add vertical reference flag using a dark slate tracking line ('#33415566')
+        ax.axvline(x=df_cached['ds'].iloc[-1], color='#33415566', linestyle=':', linewidth=1.5)
         
-        # Spacing adjustments and labels formatting strings
-        ax.set_title(f"Technical Projection Matrix: {data['ticker']}", fontsize=11, color='#FFFFFF', pad=10, weight='bold')
+        # Spacing adjustments and labels formatting strings matching standard light parameters
+        ax.set_title(f"Technical Projection Matrix: {data['ticker']}", fontsize=11, color='#0f172a', pad=10, weight='bold')
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
-        ax.tick_params(colors='#94a3b8', labelsize=8)
-        ax.grid(True, color='#2d3748', linestyle=':', alpha=0.5)
+        ax.tick_params(colors='#64748b', labelsize=8)
+        ax.grid(True, color='#e2e8f0', linestyle=':', alpha=0.7)
         
         for spine in ax.spines.values():
-            spine.set_color('#334155')
+            spine.set_color('#cbd5e1')
             
         plt.tight_layout()
         plt.savefig(chart_filename, facecolor=fig_pdf.get_facecolor(), edgecolor='none', bbox_inches='tight')
@@ -384,25 +384,23 @@ if st.sidebar.button("📬 Send Email Report"):
             df_cached = data["df"]
             forecast_cached = data["forecast"]
             
-            # Re-generate graph image context via matplotlib fallback routing loop
-            import matplotlib.pyplot as plt
-            import matplotlib.dates as mdates
-            plt.style.use('dark_background')
+            # Re-generate graph image context via matplotlib normal light mapping parameters
+            plt.rcdefaults()
             fig_pdf, ax = plt.subplots(figsize=(8, 3.5), dpi=200)
-            fig_pdf.patch.set_facecolor('#1e293b')
-            ax.set_facecolor('#1e293b')
+            fig_pdf.patch.set_facecolor('#ffffff')
+            ax.set_facecolor('#f8fafc')
             
             ax.plot(df_cached['ds'], df_cached['y'], color='#1f77b4', linewidth=2)
             ax.plot(forecast_cached['ds'], forecast_cached['yhat'], color='#ff7f0e', linestyle='--', linewidth=2)
             ax.fill_between(forecast_cached['ds'], forecast_cached['yhat_lower'], forecast_cached['yhat_upper'], color='#ff7f0e', alpha=0.15)
-            ax.axvline(x=df_cached['ds'].iloc[-1], color='#ffffff66', linestyle=':', linewidth=1.5)
+            ax.axvline(x=df_cached['ds'].iloc[-1], color='#33415566', linestyle=':', linewidth=1.5)
             
-            ax.set_title(f"Technical Projection Matrix: {data['ticker']}", fontsize=11, color='#FFFFFF', pad=10, weight='bold')
+            ax.set_title(f"Technical Projection Matrix: {data['ticker']}", fontsize=11, color='#0f172a', pad=10, weight='bold')
             ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
-            ax.tick_params(colors='#94a3b8', labelsize=8)
-            ax.grid(True, color='#2d3748', linestyle=':', alpha=0.5)
+            ax.tick_params(colors='#64748b', labelsize=8)
+            ax.grid(True, color='#e2e8f0', linestyle=':', alpha=0.7)
             for spine in ax.spines.values():
-                spine.set_color('#334155')
+                spine.set_color('#cbd5e1')
                 
             plt.tight_layout()
             plt.savefig(chart_filename, facecolor=fig_pdf.get_facecolor(), edgecolor='none', bbox_inches='tight')
@@ -425,9 +423,6 @@ if st.sidebar.button("📬 Send Email Report"):
             for temp_file in [pdf_filename, chart_filename]:
                 if os.path.exists(temp_file):
                     os.remove(temp_file)
-                
-            st.sidebar.success(f"Email(s) dispatched successfully to {total_sent} recipient(s)! 🚀")
-        except Exception as mail_err:
                 
             st.sidebar.success(f"Email(s) dispatched successfully to {total_sent} recipient(s)! 🚀")
         except Exception as mail_err:
