@@ -128,7 +128,7 @@ if predict_button and valid_ticker:
         label = market_payload.get("label", "Neutral")
         summary_text = market_payload.get("summary", "No analytical content found.")
         
-        # Caches clean structures containing dynamic string news arrays
+        # FIXED: Cache the raw calculation dataframes into session memory alongside other metrics
         st.session_state.last_report_data = {
             "ticker": selected_ticker,
             "company": company,
@@ -139,7 +139,9 @@ if predict_button and valid_ticker:
             "sentiment_lbl": label,
             "sentiment_scr": sentiment_score,
             "summary_text": summary_text,
-            "headlines": headlines  # Passes active live news data objects directly
+            "headlines": headlines,
+            "df": df,              # Saved for the report engine scoped access
+            "forecast": forecast   # Saved for the report engine scoped access
         }
 
         # 3️⃣ STEP 3: Render Primary Visual Layouts
@@ -197,7 +199,7 @@ if predict_button and valid_ticker:
             fillcolor='rgba(255, 127, 14, 0.12)', 
             line=dict(width=0), 
             name="Confidence Range",
-            hovertemplate=f"Max Range: {currency}%{{customdata[1]:,.2f}}<br>Min Range: {currency}%{{customdata[0]:,.2f}}<extra></extra>",
+            hovertemplate=f"Max Range: {currency}%{{customdata:,.2f}}<br>Min Range: {currency}%{{customdata:,.2f}}<extra></extra>",
             customdata=list(zip(lower_list, upper_list))
         ))
 
@@ -285,34 +287,36 @@ if predict_button and valid_ticker:
     except Exception as e:
         st.error(f"❌ Execution error: {e}")
 
-# --- FIXED ENGINE BYPASS LAYOUT: GENERATES CHART EXPORTS VIA MATPLOTLIB WITH CORRECT COLOR ENCODING ---
+# --- FIXED ENGINE BYPASS LAYOUT: GENERATES CHART EXPORTS VIA MATPLOTLIB USING CACHED MEMORY ARRAYS ---
 if st.session_state.last_report_data:
     pdf_filename = "world_x_market_snapshot.pdf"
     chart_filename = "temp_chart_snapshot.png"
     data = st.session_state.last_report_data
     
     try:
-        # Generate a clean, dark-themed static chart image using native matplotlib
+        # FIXED: Extract data frames safely from dynamic session memory arrays
+        df_cached = data["df"]
+        forecast_cached = data["forecast"]
+        
         import matplotlib.pyplot as plt
         import matplotlib.dates as mdates
         
-        # Initialize dark dashboard theme parameters
         plt.style.use('dark_background')
         fig_pdf, ax = plt.subplots(figsize=(8, 3.5), dpi=200)
         fig_pdf.patch.set_facecolor('#1e293b')
         ax.set_facecolor('#1e293b')
         
         # A. Plot Historical Close Data
-        ax.plot(df['ds'], df['y'], color='#1f77b4', label='Historical Close', linewidth=2)
+        ax.plot(df_cached['ds'], df_cached['y'], color='#1f77b4', label='Historical Close', linewidth=2)
         
         # B. Plot Forecast Target Core
-        ax.plot(forecast['ds'], forecast['yhat'], color='#ff7f0e', linestyle='--', label='AI Target Forecast', linewidth=2)
+        ax.plot(forecast_cached['ds'], forecast_cached['yhat'], color='#ff7f0e', linestyle='--', label='AI Target Forecast', linewidth=2)
         
         # C. Shaded Confidence Range Intervals
-        ax.fill_between(forecast['ds'], forecast['yhat_lower'], forecast['yhat_upper'], color='#ff7f0e', alpha=0.15, label='Confidence Range')
+        ax.fill_between(forecast_cached['ds'], forecast_cached['yhat_lower'], forecast_cached['yhat_upper'], color='#ff7f0e', alpha=0.15, label='Confidence Range')
         
-        # D. FIXED: Add vertical reference flag using a valid Matplotlib hex alpha string format ('#ffffff66')
-        ax.axvline(x=df['ds'].iloc[-1], color='#ffffff66', linestyle=':', linewidth=1.5)
+        # D. Add vertical reference flag using a valid Matplotlib hex alpha string format
+        ax.axvline(x=df_cached['ds'].iloc[-1], color='#ffffff66', linestyle=':', linewidth=1.5)
         
         # Spacing adjustments and labels formatting strings
         ax.set_title(f"Technical Projection Matrix: {data['ticker']}", fontsize=11, color='#FFFFFF', pad=10, weight='bold')
@@ -320,7 +324,6 @@ if st.session_state.last_report_data:
         ax.tick_params(colors='#94a3b8', labelsize=8)
         ax.grid(True, color='#2d3748', linestyle=':', alpha=0.5)
         
-        # Clean boundary lines cleanups
         for spine in ax.spines.values():
             spine.set_color('#334155')
             
@@ -378,6 +381,9 @@ if st.sidebar.button("📬 Send Email Report"):
             chart_filename = "temp_chart_snapshot.png"
             data = st.session_state.last_report_data
             
+            df_cached = data["df"]
+            forecast_cached = data["forecast"]
+            
             # Re-generate graph image context via matplotlib fallback routing loop
             import matplotlib.pyplot as plt
             import matplotlib.dates as mdates
@@ -386,12 +392,10 @@ if st.sidebar.button("📬 Send Email Report"):
             fig_pdf.patch.set_facecolor('#1e293b')
             ax.set_facecolor('#1e293b')
             
-            ax.plot(df['ds'], df['y'], color='#1f77b4', linewidth=2)
-            ax.plot(forecast['ds'], forecast['yhat'], color='#ff7f0e', linestyle='--', linewidth=2)
-            ax.fill_between(forecast['ds'], forecast['yhat_lower'], forecast['yhat_upper'], color='#ff7f0e', alpha=0.15)
-            
-            # FIXED: Updated email generator segment color layout to use valid hex encoding
-            ax.axvline(x=df['ds'].iloc[-1], color='#ffffff66', linestyle=':', linewidth=1.5)
+            ax.plot(df_cached['ds'], df_cached['y'], color='#1f77b4', linewidth=2)
+            ax.plot(forecast_cached['ds'], forecast_cached['yhat'], color='#ff7f0e', linestyle='--', linewidth=2)
+            ax.fill_between(forecast_cached['ds'], forecast_cached['yhat_lower'], forecast_cached['yhat_upper'], color='#ff7f0e', alpha=0.15)
+            ax.axvline(x=df_cached['ds'].iloc[-1], color='#ffffff66', linestyle=':', linewidth=1.5)
             
             ax.set_title(f"Technical Projection Matrix: {data['ticker']}", fontsize=11, color='#FFFFFF', pad=10, weight='bold')
             ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
@@ -421,6 +425,9 @@ if st.sidebar.button("📬 Send Email Report"):
             for temp_file in [pdf_filename, chart_filename]:
                 if os.path.exists(temp_file):
                     os.remove(temp_file)
+                
+            st.sidebar.success(f"Email(s) dispatched successfully to {total_sent} recipient(s)! 🚀")
+        except Exception as mail_err:
                 
             st.sidebar.success(f"Email(s) dispatched successfully to {total_sent} recipient(s)! 🚀")
         except Exception as mail_err:
