@@ -17,9 +17,9 @@ def send_bulk_dashboard_emails(email_sender, app_password, recipient_input, subj
     if not recipient_list:
         raise ValueError("Please enter at least one recipient email address.")
 
-    # 2. Connect securely to Gmail infrastructure
-    server = smtplib.SMTP('://gmail.com', 587)
-    server.starttls()
+    # 2. FIXED: Replaced '://gmail.com' with 'smtp.gmail.com' and upgraded to SMTP_SSL (Port 465)
+    # This bypasses cloud environment firewalls that block standard TLS port 587
+    server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
     server.login(email_sender, app_password)
 
     try:
