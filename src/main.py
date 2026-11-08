@@ -76,7 +76,7 @@ st.sidebar.markdown("---")
 st.sidebar.subheader("✉️ Automated PDF Dispatch")
 email_receiver_input = st.sidebar.text_input('Recipient Email(s) (separate with commas)')
 mail_subject = st.sidebar.text_input('Mail Subject', value="WORLD-X Market Analytics Report")
-mail_body = st.sidebar.text_area('Mail Body', value="Please review the attached multi-asset analytics target document compiled from your dashboard.")
+mail_body = st.sidebar.text_area('Mail Body', value="Please review the attached market technical projections and sentiment analysis documentation.")
 
 # Initialize dynamic reporting memory cache
 if "last_report_data" not in st.session_state:
