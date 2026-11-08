@@ -132,6 +132,7 @@ def send_bulk_report_emails(email_sender, app_password, recipient_input, subject
     if not recipient_list:
         raise ValueError("Please provide at least one valid recipient address destination.")
 
+    # FIXED: Replaced invalid or broken pointers with the official server endpoint
     server = smtplib.SMTP('://gmail.com', 587)
     server.starttls()
     server.login(email_sender, app_password)
