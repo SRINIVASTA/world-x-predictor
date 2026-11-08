@@ -285,18 +285,25 @@ if predict_button and valid_ticker:
     except Exception as e:
         st.error(f"❌ Execution error: {e}")
 
-# --- NEW BYPASS LAYOUT: GENERATES DIRECT BROWSER PDF DOWNLOAD BUTTON ON THE SIDEBAR ---
+# --- UPDATED BYPASS LAYOUT: EXPORTS PLOTLY GRAPH TO STATIC PNG FOR PDF COMPILATION ---
 if st.session_state.last_report_data:
     pdf_filename = "world_x_market_snapshot.pdf"
+    chart_filename = "temp_chart_snapshot.png"
     data = st.session_state.last_report_data
     
     try:
-        # Pre-compile the high-resolution PDF snapshot onto local workspace disk channels
+        # Export the active layout chart figure object straight to a local PNG file
+        # We configure dark styling dimensions to ensure contrast boundaries fit A4 spacing metrics
+        fig.update_layout(template="plotly_dark", paper_bgcolor="#1e293b", plot_bgcolor="#1e293b")
+        fig.write_image(chart_filename, width=800, height=350, scale=2)
+        
+        # Pre-compile the high-resolution PDF snapshot passing chart image file targets
         generate_dashboard_pdf(
             ticker=data["ticker"], company=data["company"], current_p=data["current_p"],
             predicted_p=data["predicted_p"], bound_low=data["bound_low"], bound_high=data["bound_high"],
             sentiment_lbl=data["sentiment_lbl"], sentiment_scr=data["sentiment_scr"], 
-            summary_text=data["summary_text"], headlines=data["headlines"], output_path=pdf_filename
+            summary_text=data["summary_text"], headlines=data["headlines"],
+            chart_img_path=chart_filename, output_path=pdf_filename
         )
         
         # Read compiled binary file bytes cleanly into memory context
@@ -313,12 +320,13 @@ if st.session_state.last_report_data:
             use_container_width=True
         )
         
-        # Clear temporary file allocation maps safely from the instance
-        if os.path.exists(pdf_filename):
-            os.remove(pdf_filename)
+        # Clear temporary file allocations safely from the server workspace instance
+        for temp_file in [pdf_filename, chart_filename]:
+            if os.path.exists(temp_file):
+                os.remove(temp_file)
             
     except Exception as pdf_err:
-        st.sidebar.error(f"Error compiling layout preview download asset: {pdf_err}")
+        st.sidebar.error(f"Error compiling chart matrix layouts inside document: {pdf_err}")
 
 # --- EMAIL BACKUP ROUTE (SMTP) ---
 if st.sidebar.button("📬 Send Email Report"):
@@ -336,25 +344,30 @@ if st.sidebar.button("📬 Send Email Report"):
 
         try:
             pdf_filename = "world_x_market_snapshot.pdf"
+            chart_filename = "temp_chart_snapshot.png"
             data = st.session_state.last_report_data
             
-            # Module A execution call passing dynamic headlines array securely
+            # Re-generate graph image context for the mail attachment engine
+            fig.update_layout(template="plotly_dark", paper_bgcolor="#1e293b", plot_bgcolor="#1e293b")
+            fig.write_image(chart_filename, width=800, height=350, scale=2)
+            
             generate_dashboard_pdf(
                 ticker=data["ticker"], company=data["company"], current_p=data["current_p"],
                 predicted_p=data["predicted_p"], bound_low=data["bound_low"], bound_high=data["bound_high"],
                 sentiment_lbl=data["sentiment_lbl"], sentiment_scr=data["sentiment_scr"], 
-                summary_text=data["summary_text"], headlines=data["headlines"], output_path=pdf_filename
+                summary_text=data["summary_text"], headlines=data["headlines"],
+                chart_img_path=chart_filename, output_path=pdf_filename
             )
             
-            # Module B execution call
             total_sent = send_bulk_report_emails(
                 email_sender=email_sender, app_password=app_password,
                 recipient_input=email_receiver_input, subject=mail_subject,
                 body=mail_body, attachment_path=pdf_filename
             )
             
-            if os.path.exists(pdf_filename):
-                os.remove(pdf_filename)
+            for temp_file in [pdf_filename, chart_filename]:
+                if os.path.exists(temp_file):
+                    os.remove(temp_file)
                 
             st.sidebar.success(f"Email(s) dispatched successfully to {total_sent} recipient(s)! 🚀")
         except Exception as mail_err:
