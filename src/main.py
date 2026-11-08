@@ -285,17 +285,20 @@ if predict_button and valid_ticker:
     except Exception as e:
         st.error(f"❌ Execution error: {e}")
 
-# --- UPDATED BYPASS LAYOUT: EXPORTS PLOTLY GRAPH TO STATIC PNG FOR PDF COMPILATION ---
+# --- FIXED ENGINE BYPASS LAYOUT: GENERATES CHART EXPORTS WITHOUT CHROME DEPENDENCIES ---
 if st.session_state.last_report_data:
     pdf_filename = "world_x_market_snapshot.pdf"
     chart_filename = "temp_chart_snapshot.png"
     data = st.session_state.last_report_data
     
     try:
-        # Export the active layout chart figure object straight to a local PNG file
-        # We configure dark styling dimensions to ensure contrast boundaries fit A4 spacing metrics
+        # Standardize chart aesthetic design constraints across theme blocks
         fig.update_layout(template="plotly_dark", paper_bgcolor="#1e293b", plot_bgcolor="#1e293b")
-        fig.write_image(chart_filename, width=800, height=350, scale=2)
+        
+        # FIXED ENGINE FLAGS: Use raw byte string serialization via orjson to bypass kaleido browser errors
+        img_bytes = fig.to_image(format="png", width=800, height=350, scale=2)
+        with open(chart_filename, "wb") as f_img:
+            f_img.write(img_bytes)
         
         # Pre-compile the high-resolution PDF snapshot passing chart image file targets
         generate_dashboard_pdf(
@@ -320,13 +323,13 @@ if st.session_state.last_report_data:
             use_container_width=True
         )
         
-        # Clear temporary file allocations safely from the server workspace instance
+        # Clear temporary file allocations safely from the instance
         for temp_file in [pdf_filename, chart_filename]:
             if os.path.exists(temp_file):
                 os.remove(temp_file)
             
     except Exception as pdf_err:
-        st.sidebar.error(f"Error compiling chart matrix layouts inside document: {pdf_err}")
+        st.sidebar.error(f"Error compiling layout preview download asset: {pdf_err}")
 
 # --- EMAIL BACKUP ROUTE (SMTP) ---
 if st.sidebar.button("📬 Send Email Report"):
@@ -347,9 +350,11 @@ if st.sidebar.button("📬 Send Email Report"):
             chart_filename = "temp_chart_snapshot.png"
             data = st.session_state.last_report_data
             
-            # Re-generate graph image context for the mail attachment engine
+            # Re-generate graph image bytes context for the mail attachment engine
             fig.update_layout(template="plotly_dark", paper_bgcolor="#1e293b", plot_bgcolor="#1e293b")
-            fig.write_image(chart_filename, width=800, height=350, scale=2)
+            img_bytes = fig.to_image(format="png", width=800, height=350, scale=2)
+            with open(chart_filename, "wb") as f_img:
+                f_img.write(img_bytes)
             
             generate_dashboard_pdf(
                 ticker=data["ticker"], company=data["company"], current_p=data["current_p"],
