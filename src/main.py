@@ -280,10 +280,9 @@ if predict_button and valid_ticker:
     except Exception as e:
         st.error(f"❌ Execution error: {e}")
 
-# --- FIXED: UNLINKED AND EXTRACTED THE ENTIRE PDF PREVIEW GENERATION FROM OUTSIDE THE RUNTIME WRAPPER ---
+# --- EXPORT INTERFACE LAYER: COMPILES CHART VISUALS THROUGH VIRTUAL RAM CHANNELS ---
 if st.session_state.last_report_data:
     pdf_filename = "world_x_market_snapshot.pdf"
-    chart_filename = "temp_chart_snapshot.png"
     data = st.session_state.last_report_data
     
     try:
@@ -292,7 +291,10 @@ if st.session_state.last_report_data:
         
         import matplotlib.pyplot as plt
         import matplotlib.dates as mdates
+        import io
+        import base64
         
+        # 1. Generate clean Matplotlib layout chart
         plt.rcdefaults() 
         fig_pdf, ax = plt.subplots(figsize=(8, 3.5), dpi=200)
         fig_pdf.patch.set_facecolor('#ffffff')
@@ -307,20 +309,25 @@ if st.session_state.last_report_data:
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
         ax.tick_params(colors='#64748b', labelsize=8)
         ax.grid(True, color='#e2e8f0', linestyle=':', alpha=0.7)
-        
         for spine in ax.spines.values():
             spine.set_color('#cbd5e1')
             
         plt.tight_layout()
-        plt.savefig(chart_filename, facecolor=fig_pdf.get_facecolor(), edgecolor='none', bbox_inches='tight')
+        
+        # FIXED: Save the image directly to virtual memory RAM to bypass server disk restrictions
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png', facecolor=fig_pdf.get_facecolor(), edgecolor='none', bbox_inches='tight')
+        buf.seek(0)
+        chart_base64_str = base64.b64encode(buf.read()).decode('utf-8')
         plt.close(fig_pdf)
         
+        # Pre-compile passing the clean virtual inline memory chart string
         generate_dashboard_pdf(
             ticker=data["ticker"], company=data["company"], current_p=data["current_p"],
             predicted_p=data["predicted_p"], bound_low=data["bound_low"], bound_high=data["bound_high"],
             sentiment_lbl=data["sentiment_lbl"], sentiment_scr=data["sentiment_scr"], 
             summary_text=data["summary_text"], headlines=data["headlines"],
-            chart_img_path=chart_filename, output_path=pdf_filename
+            chart_base64=chart_base64_str, output_path=pdf_filename
         )
         
         with open(pdf_filename, "rb") as f:
@@ -336,14 +343,13 @@ if st.session_state.last_report_data:
             use_container_width=True
         )
         
-        for temp_file in [pdf_filename, chart_filename]:
-            if os.path.exists(temp_file):
-                os.remove(temp_file)
+        if os.path.exists(pdf_filename):
+            os.remove(pdf_filename)
             
     except Exception as pdf_err:
         st.sidebar.error(f"Error compiling layout preview download asset: {pdf_err}")
 
-# --- FIXED: EMAIL ACTION BUTTON IS NOW ALWAYS ACCESSIBLE AT THE SIDEBAR LAYER ---
+# --- EMAIL DISPATCH BACKUP MODULE (MATCHES YOUR BULK SENDER PATTERN) ---
 st.sidebar.markdown("---")
 if st.sidebar.button("📬 Send Email Report"):
     if not st.session_state.last_report_data:
@@ -360,14 +366,17 @@ if st.sidebar.button("📬 Send Email Report"):
 
         try:
             pdf_filename = "world_x_market_snapshot.pdf"
-            chart_filename = "temp_chart_snapshot.png"
             data = st.session_state.last_report_data
             
             df_cached = data["df"]
             forecast_cached = data["forecast"]
             
+            # Re-generate graphics parameters inside virtual memory arrays
             import matplotlib.pyplot as plt
             import matplotlib.dates as mdates
+            import io
+            import base64
+            
             plt.rcdefaults()
             fig_pdf, ax = plt.subplots(figsize=(8, 3.5), dpi=200)
             fig_pdf.patch.set_facecolor('#ffffff')
@@ -386,7 +395,11 @@ if st.sidebar.button("📬 Send Email Report"):
                 spine.set_color('#cbd5e1')
                 
             plt.tight_layout()
-            plt.savefig(chart_filename, facecolor=fig_pdf.get_facecolor(), edgecolor='none', bbox_inches='tight')
+            
+            buf = io.BytesIO()
+            plt.savefig(buf, format='png', facecolor=fig_pdf.get_facecolor(), edgecolor='none', bbox_inches='tight')
+            buf.seek(0)
+            chart_base64_str = base64.b64encode(buf.read()).decode('utf-8')
             plt.close(fig_pdf)
             
             generate_dashboard_pdf(
@@ -394,21 +407,21 @@ if st.sidebar.button("📬 Send Email Report"):
                 predicted_p=data["predicted_p"], bound_low=data["bound_low"], bound_high=data["bound_high"],
                 sentiment_lbl=data["sentiment_lbl"], sentiment_scr=data["sentiment_scr"], 
                 summary_text=data["summary_text"], headlines=data["headlines"],
-                chart_img_path=chart_filename, output_path=pdf_filename
+                chart_base64=chart_base64_str, output_path=pdf_filename
             )
             
+            # Fire the verified email sender routine loop matching your pattern exactly
             total_sent = send_bulk_report_emails(
                 email_sender=email_sender, app_password=app_password,
                 recipient_input=email_receiver_input, subject=mail_subject,
                 body=mail_body, attachment_path=pdf_filename
             )
             
-            for temp_file in [pdf_filename, chart_filename]:
-                if os.path.exists(temp_file):
-                    os.remove(temp_file)
+            if os.path.exists(pdf_filename):
+                os.remove(pdf_filename)
                 
-            st.sidebar.success(f"Email(s) dispatched successfully to {total_sent} recipient(s)! 🚀")
+            st.sidebar.success(f"Email(s) sent successfully to {total_sent} recipient(s)! 🚀")
         except Exception as mail_err:
-            st.sidebar.error(f"Network block active on host firewall: {mail_err}. Use the Download Button above instead!")
+            st.sidebar.error(f"Erreur lors de l’envoi de l’e-mail : {mail_err}")
 
 st.sidebar.markdown("**Examples for Input:** AAPL, RELIANCE.NS, BTC-USD, EURUSD=X, GC=F, CL=F")
