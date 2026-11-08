@@ -7,28 +7,49 @@ from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email.encoders import encode_base64
 
-def generate_dashboard_pdf(ticker, company, current_p, predicted_p, bound_low, bound_high, sentiment_lbl, sentiment_scr, summary_text, headlines, chart_base64=None, output_path="world_x_market_snapshot.pdf"):
+def generate_dashboard_pdf(ticker, company, current_p, predicted_p, bound_low, bound_high, sentiment_lbl, sentiment_scr, summary_text, headlines, scores_map=None, chart_base64=None, output_path="world_x_market_snapshot.pdf"):
     """
-    Exclusively compiles live price points and news headlines to render a print-friendly
-    light PDF report. Embeds chart graphics natively out of memory streams.
+    Exclusively compiles live price points, memory chart graphics, and cross-references
+    news scraper feeds with AI sentiment scoring data arrays to render a light print-ready PDF.
     """
     ui_color = "#10b981" if sentiment_scr >= 0.25 else "#ef4444" if sentiment_scr <= -0.25 else "#f59e0b"
+    scores_map = scores_map or {}
     
+    # Generate structural news lines HTML loop incorporating your exact dashboard rules
     news_rows_html = ""
     if headlines:
         for h in headlines:
             h_title = h.get("title", "") if isinstance(h, dict) else str(h)
             h_date = h.get("date", "Recent") if isinstance(h, dict) else "Recent"
+            
+            # Lookup and decode individual scores using your exact fuzzy-matching fallback string logic
+            h_clean = h_title.lower().strip()
+            individual_score = scores_map.get(h_clean, 0.0)
+            
+            if h_clean not in scores_map:
+                for key, val in scores_map.items():
+                    if key in h_clean or h_clean in key:
+                        individual_score = val
+                        break
+            
+            # Formulate the correct visual dashboard badge
+            badge = "🟢" if individual_score >= 0.20 else "🔴" if individual_score <= -0.20 else "🟡"
+            badge_color = "#10b981" if individual_score >= 0.20 else "#ef4444" if individual_score <= -0.20 else "#f59e0b"
+            
             news_rows_html += f"""
             <tr style="break-inside: avoid;">
-                <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 8.5pt; color: #64748b; white-space: nowrap; width: 25%;">{h_date}</td>
-                <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;"><div style="font-weight: 600; color: #1e293b; line-height: 1.4;">{h_title}</div></td>
+                <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 8.5pt; color: #64748b; white-space: nowrap; width: 20%;">{h_date}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 9pt; width: 15%; font-weight: bold; color: {badge_color};">
+                    {badge} [{individual_score:+.2f}]
+                </td>
+                <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">
+                    <div style="font-weight: 600; color: #1e293b; line-height: 1.4;">{h_title}</div>
+                </td>
             </tr>
             """
     else:
-        news_rows_html = '<tr><td colspan="2" style="padding: 15px; text-align: center; color: #64748b;">No recent news found for this target asset ticker.</td></tr>'
+        news_rows_html = '<tr><td colspan="3" style="padding: 15px; text-align: center; color: #64748b;">No recent news found for this target asset ticker.</td></tr>'
 
-    # FIXED: Inject image directly via standalone base64 memory strings
     chart_html = ""
     if chart_base64:
         chart_html = f"""
@@ -83,9 +104,15 @@ def generate_dashboard_pdf(ticker, company, current_p, predicted_p, bound_low, b
         <div class="section-title">📝 Executive Summary Insights</div>
         <div class="summary-box">{summary_text}</div>
         {chart_html}
-        <div class="section-title">🌍 Live Google RSS News Ingest Feed</div>
+        <div class="section-title">🌍 Live Google RSS News Ingest Feed & Sentiment Breakdown</div>
         <table class="news-table">
-            <thead><tr><th>Date</th><th>Scraped Market Article Title</th></tr></thead>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>AI Rating</th>
+                    <th>Scraped Market Article Title</th>
+                </tr>
+            </thead>
             <tbody>{news_rows_html}</tbody>
         </table>
     </body>
@@ -98,9 +125,7 @@ def send_bulk_report_emails(email_sender, app_password, recipient_input, subject
     recipient_list = [email.strip() for email in recipient_input.split(",") if email.strip()]
     if not recipient_list:
         raise ValueError("Please provide at least one valid recipient address destination.")
-    
-    # Matches your exact working standalone app connection parameters
-    server = smtplib.SMTP('smtp.gmail.com', 587)
+    server = smtplib.SMTP('://gmail.com', 587)
     server.starttls()
     server.login(email_sender, app_password)
     try:
