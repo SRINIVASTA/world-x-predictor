@@ -1,11 +1,12 @@
 import os
-import base64
-import resend
+import smtplib
+import time
 from weasyprint import HTML
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email.encoders import encode_base64
 
-# =====================================================================
-# MODULE A: PDF LAYOUT RENDER ENGINE
-# =====================================================================
 def generate_dashboard_pdf(ticker, company, current_p, predicted_p, bound_low, bound_high, sentiment_lbl, sentiment_scr, summary_text, headlines, scores_map=None, chart_base64=None, output_path="world_x_market_snapshot.pdf"):
     """
     Exclusively compiles live price points, memory chart graphics, and cross-references
@@ -14,14 +15,12 @@ def generate_dashboard_pdf(ticker, company, current_p, predicted_p, bound_low, b
     ui_color = "#10b981" if sentiment_scr >= 0.25 else "#ef4444" if sentiment_scr <= -0.25 else "#f59e0b"
     scores_map = scores_map or {}
     
-    # Generate structural news lines HTML loop incorporating your exact dashboard rules
     news_rows_html = ""
     if headlines:
         for h in headlines:
             h_title = h.get("title", "") if isinstance(h, dict) else str(h)
             h_date = h.get("date", "Recent") if isinstance(h, dict) else "Recent"
             
-            # Lookup and decode individual scores using your exact fuzzy-matching fallback string logic
             h_clean = h_title.lower().strip()
             individual_score = scores_map.get(h_clean, 0.0)
             
@@ -31,7 +30,6 @@ def generate_dashboard_pdf(ticker, company, current_p, predicted_p, bound_low, b
                         individual_score = val
                         break
             
-            # Formulate the correct visual dashboard badge
             badge = "🟢" if individual_score >= 0.20 else "🔴" if individual_score <= -0.20 else "🟡"
             badge_color = "#10b981" if individual_score >= 0.20 else "#ef4444" if individual_score <= -0.20 else "#f59e0b"
             
@@ -120,40 +118,39 @@ def generate_dashboard_pdf(ticker, company, current_p, predicted_p, bound_low, b
     HTML(string=html_content).write_pdf(output_path)
     return output_path
 
-# =====================================================================
-# MODULE B: WEB API DISPATCH LOOPS (BYPASSES SMTP FIREWALLS)
-# =====================================================================
-def send_bulk_report_emails(api_key, recipient_input, subject, body, attachment_path):
+# FIXED: Restore exact working parameters mapping signature
+def send_bulk_report_emails(email_sender, app_password, recipient_input, subject, body, attachment_path=None):
     """
-    Dispatches automated emails by converting compiled documents into safe 
-    Base64 payloads and posting via secure web protocol client networks.
+    Exclusively handles parsing distinct list endpoints and executing secure delivery loops
+    with attached multi-part documentation assets matching your functional pattern requirements.
     """
-    resend.api_key = api_key
     recipient_list = [email.strip() for email in recipient_input.split(",") if email.strip()]
     if not recipient_list:
         raise ValueError("Please provide at least one valid recipient address destination.")
-
-    if not os.path.exists(attachment_path):
-        raise FileNotFoundError(f"Attachment missing at: {attachment_path}")
-
-    # Encode raw report bytes to text-safe format
-    with open(attachment_path, "rb") as pdf_file:
-        encoded_pdf = base64.b64encode(pdf_file.read()).decode("utf-8")
-
-    # Construct clean parameters payload dictionary
-    params = {
-        "from": "WORLD-X Predictor <onboarding@resend.dev>", # Adjust once domain is linked
-        "to": recipient_list,
-        "subject": subject,
-        "text": body,
-        "attachments": [
-            {
-                "filename": os.path.basename(attachment_path),
-                "content": encoded_pdf
-            }
-        ]
-    }
-
-    # Transmit via standard HTTPS API over Port 443
-    resend.Emails.send(params)
+    
+    # Established baseline secure loop connection setup blocks matching your script
+    server = smtplib.SMTP('://gmail.com', 587)
+    server.starttls()
+    server.login(email_sender, app_password)
+    try:
+        for receiver in recipient_list:
+            msg = MIMEMultipart()
+            msg['From'] = email_sender
+            msg['To'] = receiver
+            msg['Subject'] = subject
+            msg.attach(MIMEText(body, 'plain'))
+            
+            if attachment_path and os.path.exists(attachment_path):
+                with open(attachment_path, "rb") as attachment:
+                    part = MIMEBase("application", "octet-stream")
+                    part.set_payload(attachment.read())
+                    encode_base64(part)
+                    part.add_header("Content-Disposition", f"attachment; filename={os.path.basename(attachment_path)}")
+                    msg.attach(part)
+                    
+            server.sendmail(email_sender, receiver, msg.as_string())
+            if len(recipient_list) > 1:
+                time.sleep(1)
+    finally:
+        server.quit()
     return len(recipient_list)
