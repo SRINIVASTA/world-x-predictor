@@ -19,8 +19,8 @@ from utils.news_scraper import get_news_headlines
 from services.forecasting_engine import make_forecast
 from services.llm_orchestrator import analyze_and_summarize_news
 
-# Import modular background reporting utilities
-from utils.report_utils import generate_dashboard_pdf, send_bulk_report_emails
+# Import modular background reporting utility
+from utils.report_utils import generate_dashboard_pdf
 
 st.set_page_config(page_title="📈 Stock Predictor", layout="wide")
 
@@ -70,13 +70,6 @@ if not has_groq:
     st.sidebar.warning("💡 AI Summary deactivated (Missing GROQ_API_KEY). Showing raw news layout text only.")
 
 predict_button = st.sidebar.button("🔮 Predict Price")
-
-# --- INTEGRATED SIDEBAR DISPATCH FORM (ALWAYS VISIBLE) ---
-st.sidebar.markdown("---")
-st.sidebar.subheader("✉️ Automated PDF Dispatch")
-email_receiver_input = st.sidebar.text_input('Recipient Email(s) (separate with commas)')
-mail_subject = st.sidebar.text_input('Mail Subject', value="WORLD-X Market Analytics Report")
-mail_body = st.sidebar.text_area('Mail Body', value="Please review the attached multi-asset analytics target document compiled from your dashboard.")
 
 # Initialize dynamic reporting memory cache
 if "last_report_data" not in st.session_state:
@@ -160,6 +153,7 @@ if predict_button and valid_ticker:
         # 📊 Interactive Hover Plotly Chart Generation
         fig = go.Figure()
 
+        # A. Historical Closing Prices Line Trace
         fig.add_trace(go.Scatter(
             x=df['ds'], 
             y=df['y'], 
@@ -168,6 +162,7 @@ if predict_button and valid_ticker:
             hovertemplate=f"Price: {currency}%{{y:,.2f}}<extra></extra>"
         ))
 
+        # B. Prophet Center Forecast Line Trace
         fig.add_trace(go.Scatter(
             x=forecast['ds'], 
             y=forecast['yhat'], 
@@ -180,6 +175,7 @@ if predict_button and valid_ticker:
         upper_list = [float(x) for x in forecast['yhat_upper']]
         lower_list = [float(x) for x in forecast['yhat_lower']]
 
+        # C. Sentiment-Adjusted Confidence Bound Bounds (Shaded Area Traces)
         fig.add_trace(go.Scatter(
             x=forecast_ds, 
             y=upper_list, 
@@ -220,7 +216,6 @@ if predict_button and valid_ticker:
         )
 
         st.plotly_chart(fig, use_container_width=True)
-        # 4️⃣ STEP 4: Render News Score Breakdown and Summaries Block
         # 4️⃣ STEP 4: Render News Score Breakdown and Summaries Block
         if show_news and headlines:
             st.markdown("---")
@@ -274,6 +269,7 @@ if predict_button and valid_ticker:
             st.markdown("### 📝 Investor Executive Summary")
             st.write(summary_text)
             
+            # Cache the compiled scores map array values
             st.session_state.last_report_data["scores_map"] = scores_map
             
         elif show_news and not headlines:
@@ -284,7 +280,7 @@ if predict_button and valid_ticker:
         st.error(f"❌ Execution error: {e}")
 
 # =====================================================================
-# UNIFIED CLOUD-PROOF DISPATCH RUNTIME SYSTEM
+# CLEAN EXPORT ENGINE: COMPILES WHITE-THEME EXECUTIVE REPORT NATIVELY
 # =====================================================================
 if st.session_state.last_report_data:
     pdf_filename = "world_x_market_snapshot.pdf"
@@ -300,6 +296,7 @@ if st.session_state.last_report_data:
         import io
         import base64
         
+        # 1️⃣ Generate clean Matplotlib layout chart
         plt.rcdefaults() 
         fig_pdf, ax = plt.subplots(figsize=(8, 3.5), dpi=200)
         fig_pdf.patch.set_facecolor('#ffffff')
@@ -319,12 +316,14 @@ if st.session_state.last_report_data:
             
         plt.tight_layout()
         
+        # Save image directly via virtual RAM bytes memory streams (Cloud Firewall Bypass)
         buf = io.BytesIO()
         plt.savefig(buf, format='png', facecolor=fig_pdf.get_facecolor(), edgecolor='none', bbox_inches='tight')
         buf.seek(0)
         chart_base64_str = base64.b64encode(buf.read()).decode('utf-8')
         plt.close(fig_pdf)
         
+        # Compile PDF report passing the white print assets out of memory
         generate_dashboard_pdf(
             ticker=data["ticker"], company=data["company"], current_p=data["current_p"],
             predicted_p=data["predicted_p"], bound_low=data["bound_low"], bound_high=data["bound_high"],
@@ -336,6 +335,7 @@ if st.session_state.last_report_data:
         with open(pdf_filename, "rb") as f:
             pdf_bytes = f.read()
             
+        # 2️⃣ Render the Clean Print-Ready Download Trigger on the sidebar
         st.sidebar.markdown("---")
         st.sidebar.subheader("📥 Export Options")
         st.sidebar.download_button(
@@ -345,29 +345,6 @@ if st.session_state.last_report_data:
             mime="application/pdf",
             use_container_width=True
         )
-        
-        if st.sidebar.button("📬 Send Email Report", use_container_width=True):
-            if not email_receiver_input:
-                st.sidebar.error("Please enter at least one recipient email address.")
-            else:
-                try:
-                    # Look up unblockable Web API token key
-                    api_key = st.secrets["RESEND_API_KEY"]
-                except KeyError:
-                    st.sidebar.error("Missing configuration secret key! Add 'RESEND_API_KEY' inside dashboard advanced options.")
-                    st.stop()
-                
-                try:
-                    total_sent = send_bulk_report_emails(
-                        api_key=api_key,
-                        recipient_input=email_receiver_input, 
-                        subject=mail_subject,
-                        body=mail_body, 
-                        attachment_path=pdf_filename
-                    )
-                    st.sidebar.success(f"✨ Report successfully emailed to {total_sent} recipient(s)! 🚀")
-                except Exception as mail_err:
-                    st.sidebar.error(f"Transmission API error: {mail_err}")
 
         if os.path.exists(pdf_filename):
             os.remove(pdf_filename)
