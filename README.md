@@ -47,6 +47,13 @@ graph TD
     I --> C
     F --> C
     G --> C
+
+%% Report & Notification Orchestration
+    K --> C
+    J --> B
+    J --> C
+    A -.-> |Generates Report| K
+    A -.-> |Triggers Dispatch| J
 ```
 
 ---
