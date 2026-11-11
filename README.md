@@ -9,10 +9,10 @@ An enterprise-grade, production-ready Streamlit application that delivers AI-pow
 The repository has been refactored into a standardized, decoupled layer-based architecture following modern software engineering best practices:
 
 ```mermaid
-graph TD
+flowchart TD
     %% Base Infrastructure Styling
     classDef main fill:#d4edda,stroke:#28a745,stroke-width:2px;
-    classDef config fill:#fff3cd,stroke:#ffc107,stroke-width:2px;
+    classDef config fill:#fff3cd,stroke:#ffc007,stroke-width:2px;
     classDef layer fill:#e2e3e5,stroke:#383d41,stroke-width:1px;
     classDef svc fill:#cce5ff,stroke:#004085,stroke-width:2px;
     classDef utl fill:#f8d7da,stroke:#721c24,stroke-width:2px;
@@ -34,26 +34,49 @@ graph TD
         I[utils/news_scraper.py]:::utl
     end
 
-    %% Dependency Connections
-    A --> B
-    A --> C
-    A --> Utilities_Layer
-    A --> Services_Layer
-    
-    D --> B
-    D --> C
-    E --> C
-    I --> B
-    I --> C
-    F --> C
-    G --> C
+    subgraph Output_Layer [📤 Report & Notification Orchestration]
+        K[Report Generator Module]:::svc
+        J[Notification Dispatch Module]:::svc
+    end
 
-%% Report & Notification Orchestration
-    K --> C
-    J --> B
-    J --> C
-    A -.-> |Generates Report| K
-    A -.-> |Triggers Dispatch| J
+    %% Dependency Connections
+    A e1@--> B
+    A e2@--> C
+    A e3@--> Utilities_Layer
+    A e4@--> Services_Layer
+    
+    D e5@--> B
+    D e6@--> C
+    E e7@--> C
+    I e8@--> B
+    I e9@--> C
+    F e10@--> C
+    G e11@--> C
+
+    %% Report & Notification Orchestration
+    K e12@--> C
+    J e13@--> B
+    J e14@--> C
+    A e15@-.->|Generates Report| K
+    A e16@-.->|Triggers Dispatch| J
+
+    %% Running Flow Animation Definitions
+    e1@{ animate: true }
+    e2@{ animate: true }
+    e3@{ animate: true }
+    e4@{ animate: true }
+    e5@{ animate: true }
+    e6@{ animate: true }
+    e7@{ animate: true }
+    e8@{ animate: true }
+    e9@{ animate: true }
+    e10@{ animate: true }
+    e11@{ animate: true }
+    e12@{ animate: true }
+    e13@{ animate: true }
+    e14@{ animate: true }
+    e15@{ animate: true }
+    e16@{ animate: true }
 ```
 
 ---
