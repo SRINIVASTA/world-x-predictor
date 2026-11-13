@@ -125,7 +125,8 @@ This repository is licensed under the [MIT License](LICENSE) — Copyright (c) 2
 
 ## Disclaimer
 
-This project is intended for personal repository analytics, portfolio monitoring, and developer telemetry. Users are responsible for securing their Personal Access Tokens locally and adhering to GitHub API rate limits and terms of service.
+This project is intended for educational purposes, personal market research, and quantitative analysis only, and does not constitute financial or investment advice. Users are responsible for securing their API keys (such as `GROQ_API_KEY`) locally and adhering to the rate limits and terms of service of third-party data providers, including Yahoo Finance, Google News, and Groq.
+
 
 ## ⭐ Support & Contribution
 
