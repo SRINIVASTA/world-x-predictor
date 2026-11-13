@@ -131,5 +131,5 @@ This project is intended for personal repository analytics, portfolio monitoring
 
 If you clone, test, or build upon this repository, please consider giving it a **Star (⭐)** on GitHub—it helps others discover the project and supports continued development.
 
-* **Found a bug or have an idea?** Open an [Issue](https://github.com/world-x-predictor/issues).
+* **Found a bug or have an idea?** Open an [Issue](https://github.com).
 * **Want to improve the code?** Feel free to **Fork** this repository and submit a Pull Request.
