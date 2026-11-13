@@ -118,3 +118,18 @@ docker run -d -p 8509:8501 -e GROQ_API_KEY="gsk_your_key_here" --name predictor_
 ```
 
 Open your web browser and navigate directly to **`http://localhost:8509`** to test live local trading setups.
+
+## License
+
+This repository is licensed under the [MIT License](LICENSE) — Copyright (c) 2026 [T A Srinivas](https://github.com).
+
+## Disclaimer
+
+This project is intended for personal repository analytics, portfolio monitoring, and developer telemetry. Users are responsible for securing their Personal Access Tokens locally and adhering to GitHub API rate limits and terms of service.
+
+## ⭐ Support & Contribution
+
+If you clone, test, or build upon this repository, please consider giving it a **Star (⭐)** on GitHub—it helps others discover the project and supports continued development.
+
+* **Found a bug or have an idea?** Open an [Issue](https://github.com/world-x-predictor/issues).
+* **Want to improve the code?** Feel free to **Fork** this repository and submit a Pull Request.
